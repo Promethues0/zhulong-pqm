@@ -1,0 +1,129 @@
+/*
+ * 烛龙家族统一视觉「Claude 黏土橙」暖色系主题
+ * ----------------------------------------------------------------
+ * 关键：Arco Design Vue 的设计 token（--primary-* 色阶、--color-*）
+ * 必须同时铺在 :root 和 body 上才能稳定生效，故下方两个选择器内容一致。
+ * primary 色阶围绕主强调色 #B4552D 生成 1-10 阶（6 阶为标准主色）。
+ */
+
+/* ---- 黏土橙基础调色板（供页面与 token 共同引用） ---- */
+:root,
+body {
+  --clay-accent: #b4552d; /* 主强调色 */
+  --clay-accent-2: #db855c; /* 次级强调色 */
+  --clay-bg: #faf7f2; /* 暖白背景 */
+  --clay-bg-soft: #f3ede4; /* 卡片/分隔暖白 */
+  --clay-text: #2b2622; /* 主文本 */
+  --clay-text-soft: #6f655c; /* 次文本 */
+  --clay-border: #e7ddd0; /* 暖色描边 */
+
+  /* 黏土橙 primary 色阶 1→10（围绕 #B4552D） */
+  --primary-1: 248, 235, 227;
+  --primary-2: 240, 210, 192;
+  --primary-3: 230, 180, 153;
+  --primary-4: 217, 146, 112;
+  --primary-5: 199, 110, 73;
+  --primary-6: 180, 85, 45; /* #B4552D 标准主色 */
+  --primary-7: 152, 67, 33;
+  --primary-8: 122, 52, 24;
+  --primary-9: 92, 38, 16;
+  --primary-10: 64, 25, 9;
+
+  /* 链接/品牌色跟随主色 */
+  --color-link-1: var(--primary-1);
+  --color-link-2: var(--primary-2);
+  --color-link-3: var(--primary-3);
+  --color-link-4: var(--primary-4);
+
+  /* 中性/背景 token 暖化 */
+  --color-bg-1: 255, 253, 250;
+  --color-bg-2: 250, 247, 242;
+  --color-bg-3: 245, 240, 233;
+  --color-bg-4: 240, 234, 225;
+  --color-bg-5: 236, 229, 219;
+  --color-bg-white: 255, 255, 255;
+
+  --color-fill-1: 245, 240, 233;
+  --color-fill-2: 238, 231, 221;
+  --color-fill-3: 230, 221, 208;
+  --color-fill-4: 220, 209, 194;
+
+  --color-text-1: 43, 38, 34;
+  --color-text-2: 76, 68, 60;
+  --color-text-3: 124, 113, 102;
+  --color-text-4: 169, 157, 144;
+
+  --color-border-1: 240, 234, 225;
+  --color-border-2: 231, 221, 208;
+  --color-border-3: 219, 206, 191;
+  --color-border-4: 199, 182, 165;
+
+  --color-primary-light-1: 248, 235, 227;
+  --color-primary-light-2: 240, 210, 192;
+  --color-primary-light-3: 230, 180, 153;
+  --color-primary-light-4: 217, 146, 112;
+}
+
+/* ---- 字体：Hanken Grotesk 优先，系统无衬线回退 ---- */
+html,
+body {
+  font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--clay-bg);
+  color: var(--clay-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ---- 暖白底色铺到 Arco 容器 ---- */
+.arco-layout {
+  background-color: var(--clay-bg);
+}
+
+/* ---- 卡片：中等圆角、充足留白、暖色描边 ---- */
+.arco-card {
+  border-radius: 12px;
+  border-color: var(--clay-border);
+}
+
+.arco-card-bordered {
+  border: 1px solid var(--clay-border);
+}
+
+/* ---- 全局滚动条暖化 ---- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--clay-border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d6c6b2;
+}
+
+/* ---- 通用页面留白容器 ---- */
+.page {
+  padding: 20px 24px 32px;
+}
+.page-header {
+  margin-bottom: 18px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--clay-text);
+  margin: 0;
+}
+.page-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--clay-text-soft);
+}

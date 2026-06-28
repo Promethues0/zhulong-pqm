@@ -1,0 +1,19 @@
+# ---- Go backend ----
+/backend/zhulong-pqm
+/backend/zhulong-pqm.db
+/backend/*.db
+/backend/bin/
+/backend/dist/
+
+# ---- Node / Vite frontend ----
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+*.local
+
+# ---- editor / OS / tooling ----
+.DS_Store
+.idea/
+.vscode/
+.claude/
+*.log

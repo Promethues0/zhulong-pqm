@@ -1,0 +1,27 @@
+{
+  "name": "zhulong-pqm-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "烛龙·后量子迁移治理平台 (Zhulong PQM) 前端控制台",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@arco-design/web-vue": "^2.57.0",
+    "axios": "^1.7.9",
+    "marked": "^14.1.4",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vue-tsc": "^2.2.0"
+  }
+}
