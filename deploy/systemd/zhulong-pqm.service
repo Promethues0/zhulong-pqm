@@ -1,0 +1,30 @@
+[Unit]
+Description=烛龙 PQM 后量子迁移治理平台 后端服务
+Documentation=https://internal/zhulong-pqm
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zhulong-pqm
+Group=zhulong-pqm
+WorkingDirectory=/var/lib/zhulong-pqm
+EnvironmentFile=/etc/zhulong-pqm/zhulong-pqm.env
+ExecStart=/opt/zhulong-pqm/bin/zhulong-pqm
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+
+# ---- 安全加固 ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# SQLite 数据库需可写
+ReadWritePaths=/var/lib/zhulong-pqm
+
+[Install]
+WantedBy=multi-user.target

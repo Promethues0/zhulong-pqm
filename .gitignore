@@ -11,6 +11,10 @@
 /frontend/.vite/
 *.local
 
+# ---- deploy build artifacts ----
+/deploy/dist/
+/deploy/zhulong-pqm-*.tar.gz
+
 # ---- editor / OS / tooling ----
 .DS_Store
 .idea/
