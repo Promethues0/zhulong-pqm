@@ -804,6 +804,7 @@ type Device struct {
 	Type     string `json:"type"`     // gateway/hsm/ca/proxy
 	Vendor   string `json:"vendor"`   // 厂商
 	Endpoint string `json:"endpoint"` // 管理面地址，连通性探测目标
+	Username string `json:"username"` // 网关登录用户名（gateway 真机联调用，空则默认 sysadmin）
 	Token    string `json:"-"`        // 接入凭据（明文存，绝不出响应；写入仍走请求体）
 	HasToken bool   `gorm:"-" json:"hasToken"` // 派生：是否已配置接入凭据（替代明文 Token 暴露）
 

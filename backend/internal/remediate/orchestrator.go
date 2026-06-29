@@ -84,7 +84,7 @@ func (o *Orchestrator) Run(ctx context.Context, taskID uint) {
 		if isAcceptance(step.Name) {
 			o.runAcceptance(&task, step, online)
 		} else {
-			o.runAction(step, online)
+			o.runAction(&task, &device, step, online)
 		}
 		o.completeStep(&task, i, total)
 	}
@@ -128,9 +128,38 @@ func (o *Orchestrator) runConnectivity(ctx context.Context, task *model.Remediat
 
 // runAction 执行一个动作步骤（下发/灰度/分发/升级）：
 // 在线 → done，写实际动作；离线 → simulated，诚实标记模拟。
-func (o *Orchestrator) runAction(step *model.Step, online bool) {
+//
+// 真机联调：当设备为在线网关、本步是“下发……提议”那步且网关地址非空时，
+// 真调网关 REST API 下发 ke1_mlkem768 混合提议；成功并入 evidence 标 mode=real，
+// 失败则诚实降级为 simulated（不谎报 done）。其余步骤维持原逻辑。
+func (o *Orchestrator) runAction(task *model.RemediationTask, device *model.Device, step *model.Step, online bool) {
 	at := time.Now()
 	step.At = &at
+
+	if online && isGatewayPush(device, step.Name) {
+		username := strings.TrimSpace(device.Username)
+		if username == "" {
+			username = "sysadmin"
+		}
+		ev, err := PushHybridProposal(device.Endpoint, username, device.Token, gatewayPolicyName(task), "mlkem768")
+		if err == nil {
+			step.Status = model.StepDone
+			step.Detail = "已下发 ke1_mlkem768 混合提议至网关(真实)"
+			if task.Evidence == nil {
+				task.Evidence = map[string]string{}
+			}
+			for k, v := range ev {
+				task.Evidence[k] = v
+			}
+			task.Evidence["mode"] = "real"
+			return
+		}
+		// 诚实降级：网关真实下发失败，不谎报 done，标记为模拟并附原因。
+		step.Status = model.StepSimulated
+		step.Detail = "网关下发失败，降级模拟：" + err.Error()
+		return
+	}
+
 	if online {
 		step.Status = model.StepDone
 		step.Detail = actionDetail(step.Name)
@@ -138,6 +167,26 @@ func (o *Orchestrator) runAction(step *model.Step, online bool) {
 		step.Status = model.StepSimulated
 		step.Detail = "设备离线，步骤模拟执行"
 	}
+}
+
+// isGatewayPush 判断是否为“在线网关 + 真正下发混合提议那步 + 网关地址非空”，
+// 即步骤名同时含“下发”与“提议”。
+func isGatewayPush(device *model.Device, stepName string) bool {
+	if device == nil || device.Type != model.DeviceGateway || strings.TrimSpace(device.Endpoint) == "" {
+		return false
+	}
+	return strings.Contains(stepName, "下发") && strings.Contains(stepName, "提议")
+}
+
+// gatewayPolicyName 给网关策略取名：优先资产名，缺失则用轨道名兜底。
+func gatewayPolicyName(task *model.RemediationTask) string {
+	if n := strings.TrimSpace(task.AssetName); n != "" {
+		return n
+	}
+	if n := strings.TrimSpace(task.TrackName); n != "" {
+		return n
+	}
+	return "ke1_mlkem768-hybrid"
 }
 
 // runAcceptance 执行验收步骤并写入 Evidence。

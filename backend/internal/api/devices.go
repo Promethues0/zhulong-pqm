@@ -18,6 +18,7 @@ type deviceReq struct {
 	Type         string   `json:"type"`
 	Vendor       string   `json:"vendor"`
 	Endpoint     string   `json:"endpoint"`
+	Username     string   `json:"username"`
 	Token        string   `json:"token"`
 	Capabilities []string `json:"capabilities"`
 }
@@ -57,6 +58,7 @@ func (s *Server) createDevice(c *gin.Context) {
 		Type:             req.Type,
 		Vendor:           req.Vendor,
 		Endpoint:         req.Endpoint,
+		Username:         req.Username,
 		Token:            req.Token,
 		CapabilitiesJSON: db.MarshalStrings(req.Capabilities),
 		Status:           model.DeviceStatusUnknown,
@@ -88,6 +90,7 @@ func (s *Server) updateDevice(c *gin.Context) {
 	dev.Type = req.Type
 	dev.Vendor = req.Vendor
 	dev.Endpoint = req.Endpoint
+	dev.Username = req.Username
 	if req.Token != "" {
 		dev.Token = req.Token
 	}

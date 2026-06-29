@@ -370,13 +370,15 @@ type seedDevice struct {
 	Type     string
 	Vendor   string
 	Endpoint string
+	Username string // 网关真机联调登录用户名（仅 gateway 用）
+	Token    string // 接入凭据/网关登录口令（明文存，绝不出响应）
 	Caps     []string
 }
 
 var seedDevices_ = []seedDevice{
-	{"烛龙IPSEC网关-核心区", model.DeviceGateway, "烛龙", "http://localhost:8088", []string{"ke1_mlkem", "x25519mlkem768", "sm2-hybrid"}},
-	{"加密机 HSM-01", model.DeviceHSM, "国密HSM", "http://localhost:9000", []string{"ml-dsa", "ml-kem", "root-ca"}},
-	{"内部CA", model.DeviceCA, "internal", "http://localhost:8080", []string{"ml-dsa", "dual-sign"}},
+	{"烛龙IPSEC网关-核心区", model.DeviceGateway, "烛龙", "http://localhost:8088", "sysadmin", "admin123", []string{"ke1_mlkem", "x25519mlkem768", "sm2-hybrid"}},
+	{"加密机 HSM-01", model.DeviceHSM, "国密HSM", "http://localhost:9000", "", "", []string{"ml-dsa", "ml-kem", "root-ca"}},
+	{"内部CA", model.DeviceCA, "internal", "http://localhost:8080", "", "", []string{"ml-dsa", "dual-sign"}},
 }
 
 // seedDevices 在设备表为空时植入 3 台示例改造设备。
@@ -392,6 +394,8 @@ func seedDevices(gdb *gorm.DB) error {
 			Type:             d.Type,
 			Vendor:           d.Vendor,
 			Endpoint:         d.Endpoint,
+			Username:         d.Username,
+			Token:            d.Token,
 			CapabilitiesJSON: MarshalStrings(d.Caps),
 			Status:           model.DeviceStatusUnknown,
 		}
