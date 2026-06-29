@@ -457,7 +457,7 @@ export interface LegacyRisk {
   status: string // tracking / mitigating / closed
   owner: string
   recheckDate?: string | null
-  alwaysOnSLO?: boolean
+  alwaysOnSlo?: boolean
   remediationId?: number | null
   evidenceUrl?: string
   createdAt?: string | null
@@ -687,7 +687,7 @@ export interface RescoreResult {
 /** 资产评分历史快照（时间线） */
 export interface ScoreHistory {
   id?: number
-  at: string | null
+  createdAt: string
   score: number
   level: string
   reason: string // manual / rescore / profile-switch / scan-import
@@ -792,7 +792,7 @@ export interface MonitorEvent {
   detail?: string
   assetId?: number | null
   assetName?: string
-  ruleSLO?: string // SLO-05 / R-L1-02 …
+  ruleSlo?: string // SLO-05 / R-L1-02 …
   status: MonitorEventStatus
   reassessTaskId?: number | null
   ackedBy?: string

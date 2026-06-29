@@ -49,6 +49,7 @@ import type {
   ScoreProfile,
   ScoreProfileInput,
   ScoreSummary,
+  SettingItem,
   SettingsGrouped,
   SignInput,
   SloSeries,
@@ -126,11 +127,11 @@ export const assetApi = {
 
 /** R3 ② 建档深化 · 重复资产去重 / 合并 */
 export const dedupApi = {
-  /** 重复簇（按去重主键分组，仅含 size≥2 的组）。 */
+  /** 重复簇（按去重主键分组，仅含 size≥2 的组）。后端返回 {total,groups}。 */
   candidates() {
     return client
-      .get<DedupCluster[]>('/assets/dedup-candidates')
-      .then((r) => r.data ?? [])
+      .get<{ total: number; groups: DedupCluster[] }>('/assets/dedup-candidates')
+      .then((r) => r.data?.groups ?? [])
   },
   /** 合并：将 mergeIds 并入 primaryId，返回合并后的主资产。 */
   merge(payload: MergeInput) {
@@ -535,14 +536,17 @@ export const monitorApi = {
 
 /** Wave C 平台横切 · 系统设置（按 category 分组）。 */
 export const settingApi = {
-  /** 全部配置键，按 category 分组（scan/slo/weights(只读)/intel/retention）。 */
+  /** 全部配置键，按 category 分组（scan/slo/weights(只读)/intel/retention）。
+   *  后端返回 {categories:{分组:[items]},values:{}}，此处取出 categories。 */
   get() {
-    return client.get<SettingsGrouped>('/settings').then((r) => r.data ?? {})
+    return client
+      .get<{ categories?: SettingsGrouped; values?: unknown }>('/settings')
+      .then((r) => r.data?.categories ?? {})
   },
-  /** 更新单键（PUT /settings/:key，body={value}）。 */
+  /** 更新单键（PUT /settings/:key，body={value}），返回更新后的单条设置项。 */
   update(key: string, value: unknown) {
     return client
-      .put<SettingsGrouped>(`/settings/${encodeURIComponent(key)}`, { value })
+      .put<SettingItem>(`/settings/${encodeURIComponent(key)}`, { value })
       .then((r) => r.data)
   },
 }

@@ -175,9 +175,20 @@ func (s *Server) runMonitorPolicy(c *gin.Context) {
 		return
 	}
 	pid := p.ID
+	// 再入保护：同一策略的复扫（手动/周期）互斥，避免并发复扫重复落事件。
+	jobName := monitor.PolicyJobName(pid)
+	if !s.sched.TryRun(jobName) {
+		s.audit(c, "monitor", "monitor.policy.run", auditTarget("MonitorPolicy", p.ID, p.Name),
+			model.AuditDenied, "复扫进行中")
+		c.JSON(http.StatusConflict, gin.H{"error": "复扫进行中，请等待当前复扫完成后再试"})
+		return
+	}
 	runner := monitor.NewRunner(s.db, nil)
 	// 同步跑首段以便立即返回本次摘要？为不阻塞请求，按异步范式起协程。
-	go runner.Run(context.Background(), pid)
+	go func() {
+		defer s.sched.DoneRun(jobName)
+		runner.Run(context.Background(), pid)
+	}()
 	s.audit(c, "monitor", "monitor.policy.run", auditTarget("MonitorPolicy", p.ID, p.Name),
 		model.AuditSuccess, "手动触发复扫")
 	c.JSON(http.StatusAccepted, gin.H{

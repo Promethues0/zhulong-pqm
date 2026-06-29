@@ -19,8 +19,8 @@ const filters = reactive({ level: '', status: '' })
 // AlwaysOnSLO 常显项置顶。
 const sorted = computed(() =>
   [...risks.value].sort((a, b) => {
-    const av = a.alwaysOnSLO ? 1 : 0
-    const bv = b.alwaysOnSLO ? 1 : 0
+    const av = a.alwaysOnSlo ? 1 : 0
+    const bv = b.alwaysOnSlo ? 1 : 0
     if (av !== bv) return bv - av
     return (a.code || '').localeCompare(b.code || '')
   }),
@@ -137,7 +137,7 @@ defineExpose({ load })
       <template #code="{ record }">
         <a-space :size="4">
           <span class="mono code">{{ record.code }}</span>
-          <a-tag v-if="record.alwaysOnSLO" color="orange" size="small" title="SLO 看板常显">
+          <a-tag v-if="record.alwaysOnSlo" color="orange" size="small" title="SLO 看板常显">
             常显
           </a-tag>
         </a-space>

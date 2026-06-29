@@ -32,6 +32,16 @@ func marshalIntMap(m map[string]int) string {
 	return string(b)
 }
 
+// lowerDist 把内部大写键的 P1-P4 分布投影成前端契约的小写键（p1..p4）。
+func lowerDist(m map[string]int) gin.H {
+	return gin.H{
+		"p1": m[model.LevelP1],
+		"p2": m[model.LevelP2],
+		"p3": m[model.LevelP3],
+		"p4": m[model.LevelP4],
+	}
+}
+
 // profileWeights 取方案权重（Σ!=100 时回退 StandardWeights，与 db.ActiveWeights 口径一致）。
 func profileWeights(p model.ScoreProfile) scoring.Weights {
 	w := scoring.Weights{W1: p.W1, W2: p.W2, W3: p.W3, W4: p.W4, W5: p.W5}
@@ -335,7 +345,7 @@ func (s *Server) activateScoreProfile(c *gin.Context) {
 	p.AppliedAt = &now
 
 	var assets []model.CryptoAsset
-	s.db.Find(&assets)
+	s.db.Where("status <> ?", model.StatusMerged).Find(&assets)
 
 	w := profileWeights(p)
 	res, err := s.recomputeAll(assets, w, fromProfileID, p.ID, p.ID, p.Name,
@@ -350,12 +360,12 @@ func (s *Server) activateScoreProfile(c *gin.Context) {
 		fmt.Sprintf("全量复算 %d 资产，级别变化 %d，理由：%s", res.run.AssetCount, res.run.ShiftedCount, body.Reason))
 
 	c.JSON(http.StatusOK, gin.H{
-		"profile":  p,
-		"run":      res.run,
-		"before":   res.before,
-		"after":    res.after,
-		"shifts":   res.shifts,
-		"affected": res.run.ShiftedCount,
+		"profile": p,
+		"run":     res.run,
+		"before":  lowerDist(res.before),
+		"after":   lowerDist(res.after),
+		"shifts":  res.shifts,
+		"shifted": res.run.ShiftedCount,
 	})
 }
 
@@ -398,10 +408,10 @@ func (s *Server) previewScoreProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"profile":    p,
 		"assetCount": len(assets),
-		"before":     before,
-		"after":      after,
+		"before":     lowerDist(before),
+		"after":      lowerDist(after),
 		"shifts":     shifts,
-		"affected":   shifted,
+		"shifted":    shifted,
 		"hndlBefore": hndlBefore,
 		"hndlAfter":  hndlAfter,
 		"persisted":  false,
@@ -425,7 +435,7 @@ func (s *Server) rescoreAssets(c *gin.Context) {
 		scope = "all"
 	}
 
-	q := s.db.Model(&model.CryptoAsset{})
+	q := s.db.Model(&model.CryptoAsset{}).Where("status <> ?", model.StatusMerged)
 	reason := model.ReasonRescore
 	switch {
 	case len(req.AssetIDs) > 0:
@@ -497,6 +507,11 @@ func (s *Server) rescoreAssets(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"updated": res.run.AssetCount,
-		"run":     res.run,
+		"run": gin.H{
+			"before":  lowerDist(res.before),
+			"after":   lowerDist(res.after),
+			"shifted": res.run.ShiftedCount,
+			"shifts":  res.shifts,
+		},
 	})
 }

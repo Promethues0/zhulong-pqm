@@ -250,12 +250,18 @@ async function openReport() {
   const run = activeRun.value
   if (!run) return
   reportOpen.value = true
+  // 进入即清空旧报告并置加载态，避免串显上一份报告。
+  report.value = null
   // 已有报告 → 直接拉全文；否则生成。
   if (run.reportId != null) {
+    generatingReport.value = true
     try {
       report.value = await verifyApi.getReport(run.reportId)
     } catch {
+      report.value = null
       Message.error('加载验收报告失败')
+    } finally {
+      generatingReport.value = false
     }
     return
   }

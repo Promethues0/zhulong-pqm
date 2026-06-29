@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message, type TableData } from '@arco-design/web-vue'
+import { Message, Modal, type TableData } from '@arco-design/web-vue'
 import {
   IconPlus,
   IconRefresh,
@@ -164,21 +164,31 @@ async function executeTask() {
   }
 }
 
-async function rollbackTask() {
+function rollbackTask() {
   if (!activeTask.value) return
-  rollingBack.value = true
-  try {
-    const t = await remediationApi.rollback(activeTask.value.id)
-    activeTask.value = t
-    const idx = tasks.value.findIndex((x) => x.id === t.id)
-    if (idx >= 0) tasks.value[idx] = t
-    Message.success('已回滚至改造前状态')
-    await loadSummary()
-  } catch {
-    Message.error('回滚失败')
-  } finally {
-    rollingBack.value = false
-  }
+  Modal.warning({
+    title: '回滚改造',
+    content: `确认将「${activeTask.value.assetName}」回滚至改造前状态？该操作会撤销已下发的 PQC 改造。`,
+    okText: '回滚',
+    cancelText: '取消',
+    hideCancel: false,
+    onOk: async () => {
+      if (!activeTask.value) return
+      rollingBack.value = true
+      try {
+        const t = await remediationApi.rollback(activeTask.value.id)
+        activeTask.value = t
+        const idx = tasks.value.findIndex((x) => x.id === t.id)
+        if (idx >= 0) tasks.value[idx] = t
+        Message.success('已回滚至改造前状态')
+        await loadSummary()
+      } catch {
+        Message.error('回滚失败')
+      } finally {
+        rollingBack.value = false
+      }
+    },
+  })
 }
 
 // 一键验收：对 done 工单发起验收运行，跳转到「验收自动化」页带 query 自动发起。

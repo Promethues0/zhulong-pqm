@@ -93,7 +93,7 @@ const eventColumns = [
   { title: '级别', slotName: 'severity', width: 90 },
   { title: '类型', dataIndex: 'kind', width: 110 },
   { title: '标题', slotName: 'title', minWidth: 200 },
-  { title: '关联', dataIndex: 'ruleSLO', width: 100 },
+  { title: '关联', dataIndex: 'ruleSlo', width: 100 },
   { title: '发生时间', slotName: 'time', width: 160 },
   { title: '处置', slotName: 'actions', width: 170 },
 ]

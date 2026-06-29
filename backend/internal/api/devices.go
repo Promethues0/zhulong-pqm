@@ -22,9 +22,10 @@ type deviceReq struct {
 	Capabilities []string `json:"capabilities"`
 }
 
-// loadDeviceCaps 反序列化设备的 Capabilities，供响应使用。
+// loadDeviceCaps 反序列化设备的 Capabilities，并派生 HasToken，供响应使用。
 func loadDeviceCaps(d *model.Device) {
 	d.Capabilities = db.UnmarshalStrings(d.CapabilitiesJSON)
+	d.HasToken = d.Token != ""
 }
 
 // listDevices 列出全部改造设备（倒序）。

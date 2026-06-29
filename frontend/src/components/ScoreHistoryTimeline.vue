@@ -132,7 +132,7 @@ defineExpose({ load })
                 </a-tag>
                 <span v-if="h.profileName" class="tl-profile">{{ h.profileName }}</span>
                 <span v-if="h.changedBy" class="tl-by">· {{ h.changedBy }}</span>
-                <span class="tl-time">{{ fmtDate(h.at) }}</span>
+                <span class="tl-time">{{ fmtDate(h.createdAt) }}</span>
               </div>
             </div>
           </a-timeline-item>

@@ -804,7 +804,8 @@ type Device struct {
 	Type     string `json:"type"`     // gateway/hsm/ca/proxy
 	Vendor   string `json:"vendor"`   // 厂商
 	Endpoint string `json:"endpoint"` // 管理面地址，连通性探测目标
-	Token    string `json:"token"`    // 接入凭据（scaffold 阶段明文存）
+	Token    string `json:"-"`        // 接入凭据（明文存，绝不出响应；写入仍走请求体）
+	HasToken bool   `gorm:"-" json:"hasToken"` // 派生：是否已配置接入凭据（替代明文 Token 暴露）
 
 	CapabilitiesJSON string   `gorm:"column:capabilities;type:text" json:"-"` // JSON 序列化的 []string
 	Capabilities     []string `gorm:"-" json:"capabilities"`                  // 反序列化后的能力清单

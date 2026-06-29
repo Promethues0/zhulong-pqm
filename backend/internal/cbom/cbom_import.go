@@ -71,6 +71,8 @@ func ComponentToAsset(c Component) (model.CryptoAsset, bool) {
 			a.RiskScore = atoi(p.Value)
 		case "zhulong:riskLevel":
 			a.RiskLevel = p.Value
+		case "zhulong:status":
+			a.Status = p.Value
 		case "zhulong:hndl":
 			a.HNDL = p.Value == "true"
 		case "zhulong:suggestedAlgo":

@@ -78,6 +78,15 @@ const formOpen = ref(false)
 const form = reactive<ScoreProfileInput>({ name: '', description: '', w1: 30, w2: 25, w3: 20, w4: 15, w5: 10 })
 const weightSum = computed(() => form.w1 + form.w2 + form.w3 + form.w4 + form.w5)
 
+function resetForm() {
+  Object.assign(form, { name: '', description: '', w1: 30, w2: 25, w3: 20, w4: 15, w5: 10 })
+}
+
+function openProfileForm() {
+  resetForm()
+  formOpen.value = true
+}
+
 async function loadProfiles() {
   profileLoading.value = true
   try {
@@ -96,7 +105,7 @@ async function saveProfile() {
     await profileApi.create({ ...form, name: form.name.trim() })
     Message.success('权重方案已创建')
     formOpen.value = false
-    Object.assign(form, { name: '', description: '', w1: 30, w2: 25, w3: 20, w4: 15, w5: 10 })
+    resetForm()
     await loadProfiles()
   } catch {
     Message.error('创建方案失败（名称重复或权重非法）')
@@ -145,7 +154,7 @@ onMounted(() => { load(); loadProfiles() })
     <!-- 专家模式：评分权重方案 -->
     <a-card class="block-card">
       <template #title><IconExperiment /> 评分权重方案（专家模式 · 默认锁 30/25/20/15/10）</template>
-      <template #extra><a-button size="small" @click="formOpen = true">新建方案</a-button></template>
+      <template #extra><a-button size="small" @click="openProfileForm">新建方案</a-button></template>
       <a-spin :loading="profileLoading" style="width: 100%">
         <a-space wrap>
           <div v-for="p in profiles" :key="p.id" class="profile-chip" :class="{ active: p.isActive }">
@@ -208,7 +217,7 @@ onMounted(() => { load(); loadProfiles() })
     </a-card>
 
     <!-- 新建方案 -->
-    <a-modal v-model:visible="formOpen" title="新建评分权重方案" @ok="saveProfile" :ok-text="`保存（Σ=${weightSum}）`" :ok-button-props="{ disabled: weightSum !== 100 }">
+    <a-modal v-model:visible="formOpen" title="新建评分权重方案" @ok="saveProfile" @close="resetForm" :ok-text="`保存（Σ=${weightSum}）`" :ok-button-props="{ disabled: weightSum !== 100 }">
       <a-form :model="form" layout="vertical">
         <a-form-item label="方案名"><a-input v-model="form.name" placeholder="如：金融行业偏 HNDL" /></a-form-item>
         <a-form-item label="说明"><a-input v-model="form.description" placeholder="可选" /></a-form-item>

@@ -144,6 +144,7 @@ func assetToComponent(a model.CryptoAsset) Component {
 		{"zhulong:certFingerprint", a.CertFingerprint},
 		{"zhulong:riskScore", fmt.Sprintf("%d", a.RiskScore)},
 		{"zhulong:riskLevel", a.RiskLevel},
+		{"zhulong:status", a.Status},
 		{"zhulong:hndl", fmt.Sprintf("%t", a.HNDL)},
 		{"zhulong:suggestedAlgo", a.SuggestedAlgo},
 		{"zhulong:d1", fmt.Sprintf("%d", a.D1)},

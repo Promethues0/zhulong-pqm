@@ -16,8 +16,9 @@ import (
 type Scheduler struct {
 	interval time.Duration
 
-	mu   sync.Mutex
-	jobs map[string]*scheduledJob
+	mu      sync.Mutex
+	jobs    map[string]*scheduledJob
+	running map[string]bool // 手动触发的进程内互斥集合（无对应 scheduledJob 时也可单飞）
 
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -42,7 +43,30 @@ func NewScheduler(tick time.Duration) *Scheduler {
 	return &Scheduler{
 		interval: tick,
 		jobs:     make(map[string]*scheduledJob),
+		running:  make(map[string]bool),
 	}
+}
+
+// TryRun 原子地占用名为 name 的执行槽用于手动触发：未占用返回 true 并置位（调用方跑完须调 DoneRun 复位）；
+// 已在运行（手动占用或对应周期任务在跑）返回 false，供调用方做再入保护（如手动复扫 409）。
+func (s *Scheduler) TryRun(name string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running[name] {
+		return false
+	}
+	if j, ok := s.jobs[name]; ok && j.running {
+		return false
+	}
+	s.running[name] = true
+	return true
+}
+
+// DoneRun 释放 TryRun 占用的执行槽（与 TryRun 成对调用）。
+func (s *Scheduler) DoneRun(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.running, name)
 }
 
 // Register 注册（或覆盖）一个周期任务。every<=0 的任务被忽略（视为禁用）。
@@ -103,7 +127,7 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	s.mu.Lock()
 	due := make([]*scheduledJob, 0)
 	for _, j := range s.jobs {
-		if j.running || now.Before(j.nextAt) {
+		if j.running || s.running[j.name] || now.Before(j.nextAt) {
 			continue
 		}
 		j.running = true

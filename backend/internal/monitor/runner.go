@@ -117,6 +117,9 @@ func (r *Runner) rescanAsset(ctx context.Context, p *model.MonitorPolicy, a *mod
 	// 1) 真实 TLS 探测（有 endpoint 时）；探测失败/无 endpoint → 合成态，沿用已知算法。
 	nowAlgo := prevAlgo
 	probed := false
+	// 快照复扫前的证书到期时间：writeBackAsset 会就地改写 a.CertNotAfter，
+	// 故须在回写前留存旧值，否则 certRenewed 永远拿到相等的新值（恒 false）。
+	prevCertNotAfter := a.CertNotAfter
 	var newCertNotAfter *time.Time = a.CertNotAfter
 	if a.Endpoint != "" {
 		if host, port, ok := parseEndpoint(a.Endpoint); ok {
@@ -145,7 +148,7 @@ func (r *Runner) rescanAsset(ctx context.Context, p *model.MonitorPolicy, a *mod
 	}
 
 	// 3) 证书续期/更换 → cbom_diff 事件（指纹/到期变化）。
-	if certRenewed(a.CertNotAfter, newCertNotAfter, prevAlgo, nowAlgo, dk) {
+	if certRenewed(prevCertNotAfter, newCertNotAfter, prevAlgo, nowAlgo, dk) {
 		r.emitCertRenewed(a, sum)
 	}
 
@@ -246,42 +249,73 @@ func (r *Runner) checkCertExpiry(p *model.MonitorPolicy, a *model.CryptoAsset, s
 	if left > warnDays {
 		return
 	}
-	// 去重：同资产同类已 open 的 cert_expiry 不重复生成。
-	var existing int64
-	r.db.Model(&model.MonitorEvent{}).
-		Where("kind = ? AND asset_id = ? AND status = ?", model.EventCertExpiry, a.ID, model.MonOpen).
-		Count(&existing)
-	if existing > 0 {
-		return
-	}
 
+	// 本轮严重度（上移到去重判断前，以便对现存事件做升级判定）。
 	sev := model.SevWarning
 	if left < 0 || left <= warnDays/3 {
 		sev = model.SevP1 // 已过期或临近 1/3 提前量内升级为红
 	}
-	ev := r.newEvent(model.EventCertExpiry, sev, a)
-	ev.RuleSLO = model.SLO06CertExpiry
+
 	label := certClassLabel(cl)
 	leftDesc := fmt.Sprintf("剩余 %d 天", left)
 	if left < 0 {
 		leftDesc = fmt.Sprintf("已过期 %d 天", -left)
 	}
-	ev.Title = fmt.Sprintf("%s到期预警（%s）", label, leftDesc)
+	title := fmt.Sprintf("%s到期预警（%s）", label, leftDesc)
 	detail := fmt.Sprintf("资产「%s」%s，提前量 %d 天，到期 %s。",
 		a.Name, leftDesc, warnDays, a.CertNotAfter.Format("2006-01-02"))
 	if !hasOTA(a, cl) {
 		detail += " 无 OTA 能力，需现场检修替换（关联 R-003）。"
 	}
-	ev.Detail = detail
-	ev.Evidence = map[string]string{
+	evidence := map[string]string{
 		"certClass": label,
 		"daysLeft":  fmt.Sprintf("%d", left),
 		"warnDays":  fmt.Sprintf("%d", warnDays),
 		"notAfter":  a.CertNotAfter.Format(time.RFC3339),
 	}
+
+	// 去重 + 升级：查同资产同类已 open 的 cert_expiry。
+	// 不存在则新建；存在但严重度低于本轮（warning<p1）则就地升级，否则跳过。
+	var existing model.MonitorEvent
+	err := r.db.Where("kind = ? AND asset_id = ? AND status = ?",
+		model.EventCertExpiry, a.ID, model.MonOpen).
+		Order("occurred_at desc").First(&existing).Error
+	if err == nil {
+		if certSevRank(sev) > certSevRank(existing.Severity) {
+			existing.Severity = sev
+			existing.Title = title
+			existing.Detail = detail
+			existing.Evidence = evidence
+			r.db.Model(&existing).Updates(map[string]any{
+				"severity": existing.Severity,
+				"title":    existing.Title,
+				"detail":   existing.Detail,
+				"evidence": db.MarshalMonEvidence(existing.Evidence),
+			})
+		}
+		return
+	}
+
+	ev := r.newEvent(model.EventCertExpiry, sev, a)
+	ev.RuleSLO = model.SLO06CertExpiry
+	ev.Title = title
+	ev.Detail = detail
+	ev.Evidence = evidence
 	r.saveEvent(ev)
 	sum.EventCount++
 	sum.CertCount++
+}
+
+// certSevRank 证书预警严重度排序（用于升级判定）：inspect<warning<p1。
+func certSevRank(sev string) int {
+	switch sev {
+	case model.SevP1:
+		return 2
+	case model.SevWarning:
+		return 1
+	default:
+		return 0
+	}
 }
 
 // synthSLO 合成 SLO-01/02 时序点（演示态：基线附近抖动，诚实标 source=synthetic）。

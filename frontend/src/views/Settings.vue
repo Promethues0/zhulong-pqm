@@ -25,6 +25,9 @@ const writable = computed(() => auth.hasRole('admin'))
 const loading = ref(false)
 const grouped = ref<SettingsGrouped>({})
 
+// 情报源行自增稳定 key（避免空 name 重复导致 a-table row-key 撞车）。
+let intelSeq = 0
+
 // ---- 扫描默认 ----
 interface ScanDefaults {
   exposure: string
@@ -76,6 +79,7 @@ interface IntelSource {
   url: string
   kind: string
   enabled: boolean
+  _rid?: number
 }
 const intelSources = ref<IntelSource[]>([])
 const intelKey = ref('threatintel.sources')
@@ -110,9 +114,13 @@ const intelColumns = [
   { title: '操作', slotName: 'actions', width: 70, align: 'center' as const },
 ]
 
-/** 从分组里按 key 取出某项的 value（容错 readonly / 缺失）。 */
-function pick(category: string, key: string): SettingItem | undefined {
-  return (grouped.value[category] ?? []).find((s) => s.key === key)
+/** 按 key 在所有分组里命中某项（不依赖 category，容错后端分组口径差异）。 */
+function pick(_c: string, key: string): SettingItem | undefined {
+  for (const arr of Object.values(grouped.value)) {
+    const hit = (arr || []).find((s) => s.key === key)
+    if (hit) return hit
+  }
+  return undefined
 }
 
 function hydrate() {
@@ -142,7 +150,12 @@ function hydrate() {
   const it = pick('intel', 'threatintel.sources')
   if (it) {
     intelKey.value = it.key
-    intelSources.value = Array.isArray(it.value) ? (it.value as IntelSource[]) : []
+    const arr = Array.isArray(it.value) ? (it.value as IntelSource[]) : []
+    // 回填时为每行补稳定自增 key。
+    arr.forEach((s) => {
+      s._rid = ++intelSeq
+    })
+    intelSources.value = arr
   }
   // 保存期
   const rt = pick('retention', 'retention.policy')
@@ -174,7 +187,15 @@ async function put(key: string, value: unknown, flag: { v: boolean }, label: str
   if (!writable.value) return
   flag.v = true
   try {
-    grouped.value = await settingApi.update(key, value)
+    // 后端返回更新后的单条设置项：更新 grouped 内对应项后再 hydrate。
+    const updated = await settingApi.update(key, value)
+    for (const arr of Object.values(grouped.value)) {
+      const idx = (arr || []).findIndex((s) => s.key === updated.key)
+      if (idx >= 0) {
+        arr[idx] = updated
+        break
+      }
+    }
     hydrate()
     Message.success(`${label}已保存`)
   } catch {
@@ -223,14 +244,16 @@ function restoreSloDefaults() {
 }
 
 function addIntelSource() {
-  intelSources.value.push({ name: '', url: '', kind: 'algo-deprecation', enabled: true })
+  intelSources.value.push({ name: '', url: '', kind: 'algo-deprecation', enabled: true, _rid: ++intelSeq })
 }
 function removeIntelSource(i: number) {
   intelSources.value.splice(i, 1)
 }
 function saveIntel() {
-  // 过滤掉名称为空的脏行。
-  const clean = intelSources.value.filter((s) => s.name.trim())
+  // 过滤掉名称为空的脏行，并剥掉前端内部的 _rid 再发后端。
+  const clean = intelSources.value
+    .filter((s) => s.name.trim())
+    .map(({ _rid, ...rest }) => rest)
   put(
     intelKey.value,
     clean,

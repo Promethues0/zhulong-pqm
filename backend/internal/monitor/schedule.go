@@ -56,6 +56,12 @@ func schedulerJobName(policyID uint) string {
 	return "monitor-rescan-" + uintToStr(policyID)
 }
 
+// PolicyJobName 暴露策略复扫的调度槽名，供 API 层手动触发时做 TryRun 再入保护，
+// 与周期复扫共用同一互斥键（手动与周期不会并发同一策略）。
+func PolicyJobName(policyID uint) string {
+	return schedulerJobName(policyID)
+}
+
 // RegisterPolicies 把所有启用策略注册到统一调度框架（B0-5）。
 // 每个 enabled 策略按其 cron 间隔注册一个复扫 JobFunc；调度器到点在 goroutine 内调 Runner.Run。
 // main.go 启动后调用一次；策略增删改后由 API 调 SyncPolicy/Unregister 增量维护。

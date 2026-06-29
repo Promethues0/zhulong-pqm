@@ -34,9 +34,10 @@ func (s *Server) Router() *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	// CORS：允许本地前端开发端口访问。
+	// CORS：仅放行配置白名单内的前端来源（ZPQM_CORS_ORIGINS，默认本地开发端口）。
+	// 线上为 nginx 同源部署，不受此限制。
 	r.Use(cors.New(cors.Config{
-		AllowOriginFunc:  func(origin string) bool { return true }, // 开发期放开，生产应收敛白名单
+		AllowOrigins:     s.cfg.CORSOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
