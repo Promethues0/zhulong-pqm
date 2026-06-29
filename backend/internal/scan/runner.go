@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -70,9 +71,11 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 	}
 
 	var (
-		wg    sync.WaitGroup
-		mu    sync.Mutex
-		count int
+		wg          sync.WaitGroup
+		mu          sync.Mutex
+		count       int
+		failed      int
+		firstReason string
 	)
 	sem := make(chan struct{}, maxConcurrency)
 
@@ -87,16 +90,22 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
-				// 探测失败的目标也记录一条空结果，便于审计与排错。
-				failed := &model.ScanResult{
+				// 探测失败：记录一条 failed 结果并写明可读原因（不可达/超时/非 TLS），便于排错。
+				reason := probeFailReason(err)
+				if firstReason == "" {
+					firstReason = reason
+				}
+				r.db.Create(&model.ScanResult{
 					ScanJobID: job.ID,
 					Host:      t.Host,
 					Port:      t.Port,
 					Method:    r.scanner.Method(),
 					Source:    model.SourceScan,
-					Raw:       fmt.Sprintf(`{"error":%q,"simulated":true}`, err.Error()),
-				}
-				r.db.Create(failed)
+					Status:    "failed",
+					Error:     reason,
+					Raw:       fmt.Sprintf(`{"error":%q}`, err.Error()),
+				})
+				failed++
 				return
 			}
 			r.persistResult(&job, res)
@@ -106,7 +115,35 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 	wg.Wait()
 
 	job.ResultCount = count
-	r.finish(&job, model.JobDone, "")
+	// 即便有失败也置 done（任务本身跑完了），但把失败摘要写进 Error 让前端可见。
+	note := ""
+	if failed > 0 {
+		if count == 0 {
+			note = fmt.Sprintf("全部 %d 个目标探测失败，未发现密码学使用点：%s", failed, firstReason)
+		} else {
+			note = fmt.Sprintf("成功 %d / 失败 %d（%s）", count, failed, firstReason)
+		}
+	}
+	r.finish(&job, model.JobDone, note)
+}
+
+// probeFailReason 把底层网络 / TLS 错误归类为人类可读的探测失败原因。
+func probeFailReason(err error) string {
+	s := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(s, "i/o timeout"), strings.Contains(s, "deadline exceeded"), strings.Contains(s, "context deadline"):
+		return "连接超时（目标不可达，或被防火墙拦截；内网地址需在能路由到它的网络内运行扫描）"
+	case strings.Contains(s, "connection refused"):
+		return "连接被拒绝（端口未开放或无服务监听）"
+	case strings.Contains(s, "no route to host"), strings.Contains(s, "network is unreachable"):
+		return "无法路由到目标（内网/私网地址需在可达网络内扫描）"
+	case strings.Contains(s, "no such host"), strings.Contains(s, "server misbehaving"):
+		return "域名解析失败（host 无法解析）"
+	case strings.Contains(s, "handshake"), strings.Contains(s, "first record"), strings.Contains(s, "tls:"), strings.Contains(s, "eof"):
+		return "TLS 握手失败（目标可能未启用 TLS / 非 HTTPS 服务）"
+	default:
+		return "探测失败：" + err.Error()
+	}
 }
 
 // persistResult 落库一条探测结果：填发现契约字段 + 命中规则 + 建/并资产。

@@ -141,6 +141,8 @@ export interface ScanResult {
   /** R3 ① 命中规则（每条结果可命中多条规则）。 */
   hits?: RuleHit[]
   method?: string // M1 …
+  status?: string // ok / failed（探测状态）
+  error?: string // 探测失败原因（不可达/超时/非 TLS）
   createdAt?: string
 }
 

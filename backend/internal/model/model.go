@@ -765,6 +765,10 @@ type ScanResult struct {
 	Raw     string `gorm:"type:text" json:"-"` // 原始 JSON 快照
 	AssetID uint   `json:"assetId"`            // 关联的 CryptoAsset
 
+	// 探测状态（① 失败可视化）：ok=成功取到密码学特征；failed=不可达/超时/非 TLS 等。
+	Status string `gorm:"default:ok" json:"status"`
+	Error  string `json:"error"` // 探测失败的人类可读原因
+
 	// ① 发现深化（Wave B-1）发现契约字段（FR-3.7/3.8/3.10）。
 	Method           string     `gorm:"default:M1" json:"method"`      // 发现方式 M1-M7
 	Source           string     `json:"source"`                        // scan/manual/import 映射

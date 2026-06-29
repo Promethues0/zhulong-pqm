@@ -134,7 +134,7 @@ async function onPemFile(file: File) {
 
 // 记录上一轮各任务状态，用于检测「刚刚完成」以提示发现→清单的闭环交接。
 const prevStatus = new Map<number, string>()
-const lastDone = ref<{ name: string; count: number } | null>(null)
+const lastDone = ref<{ name: string; count: number; error?: string } | null>(null)
 
 const form = reactive({
   name: '',
@@ -162,13 +162,14 @@ const jobColumns = [
 ]
 
 const resultColumns = [
-  { title: '主机', dataIndex: 'host' },
-  { title: '端口', dataIndex: 'port', width: 80 },
-  { title: 'TLS', dataIndex: 'tlsVersion', width: 90 },
-  { title: '密钥算法', slotName: 'keyAlgo', width: 150 },
+  { title: '主机', dataIndex: 'host', width: 150 },
+  { title: '端口', dataIndex: 'port', width: 70 },
+  { title: '状态', slotName: 'status', width: 250 },
+  { title: 'TLS', dataIndex: 'tlsVersion', width: 84 },
+  { title: '密钥算法', slotName: 'keyAlgo', width: 140 },
   { title: '签名算法', dataIndex: 'sigAlgo', width: 120 },
-  { title: '命中规则', slotName: 'hits', minWidth: 170 },
-  { title: '证书到期', slotName: 'cert', width: 130 },
+  { title: '命中规则', slotName: 'hits', minWidth: 160 },
+  { title: '证书到期', slotName: 'cert', width: 120 },
 ]
 
 const hasRunning = () =>
@@ -179,8 +180,12 @@ function applyJobs(list: ScanJob[]) {
   for (const j of list) {
     const prev = prevStatus.get(j.id)
     if (prev && prev !== 'done' && j.status === 'done') {
-      lastDone.value = { name: j.name, count: j.resultCount }
-      Message.success(`扫描「${j.name}」完成，新增 ${j.resultCount} 项密码使用点`)
+      lastDone.value = { name: j.name, count: j.resultCount, error: j.error }
+      if (j.resultCount > 0) {
+        Message.success(`扫描「${j.name}」完成，新增 ${j.resultCount} 项密码使用点`)
+      } else {
+        Message.warning(`扫描「${j.name}」完成，但未发现密码学使用点${j.error ? '：' + j.error : ''}`)
+      }
     }
     prevStatus.set(j.id, j.status)
   }
@@ -284,13 +289,18 @@ onBeforeUnmount(() => {
 
     <a-alert
       v-if="lastDone"
-      type="success"
+      :type="lastDone.count > 0 ? 'success' : 'warning'"
       closable
       class="handoff-alert"
       @close="lastDone = null"
     >
-      扫描「{{ lastDone.name }}」完成，新增 <strong>{{ lastDone.count }}</strong> 项密码使用点并已自动评分入档。
-      <a-link @click="gotoAssets">前往密码使用点清单 →</a-link>
+      <template v-if="lastDone.count > 0">
+        扫描「{{ lastDone.name }}」完成，新增 <strong>{{ lastDone.count }}</strong> 项密码使用点并已自动评分入档。
+        <a-link @click="gotoAssets">前往密码使用点清单 →</a-link>
+      </template>
+      <template v-else>
+        扫描「{{ lastDone.name }}」完成，但<strong>未发现密码学使用点</strong>。{{ lastDone.error || '请检查目标是否可达、端口是否为 HTTPS/TLS 服务。' }}
+      </template>
     </a-alert>
 
     <a-row :gutter="16">
@@ -498,10 +508,17 @@ onBeforeUnmount(() => {
           :pagination="{ pageSize: 10, hideOnSinglePage: true }"
           row-key="id"
           style="margin-top: 16px"
-          :scroll="{ x: 700 }"
+          :scroll="{ x: 1000 }"
         >
+          <template #status="{ record }">
+            <template v-if="record.status === 'failed'">
+              <a-tag color="red" size="small">失败</a-tag>
+              <span class="fail-reason">{{ record.error || '探测失败' }}</span>
+            </template>
+            <a-tag v-else color="green" size="small">成功</a-tag>
+          </template>
           <template #keyAlgo="{ record }">
-            {{ record.keyAlgo }}<span v-if="record.keySize"> / {{ record.keySize }}</span>
+            {{ record.keyAlgo || '—' }}<span v-if="record.keySize"> / {{ record.keySize }}</span>
           </template>
           <template #hits="{ record }">
             <a-space v-if="record.hits?.length" wrap :size="4">
@@ -564,6 +581,11 @@ onBeforeUnmount(() => {
 }
 .dim {
   color: var(--clay-text-soft);
+}
+.fail-reason {
+  margin-left: 6px;
+  font-size: 12px;
+  color: rgb(var(--red-6));
 }
 .handoff-alert {
   margin-bottom: 16px;
