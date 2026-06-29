@@ -97,7 +97,8 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 用 BASE_URL 支持子路径部署（根 '/' 与 '/pqm/' 子路径通用）。
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
 

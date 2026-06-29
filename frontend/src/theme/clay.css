@@ -109,6 +109,48 @@ body {
   background: #d6c6b2;
 }
 
+/* ============================================================
+ * 浮层实底修复（弹窗 / 抽屉 / 下拉 半透明、难交互问题）
+ * 本主题把 Arco 语义背景 token（--color-bg-*）写成 RGB 三元组，而 Arco 以
+ * var(--color-bg-x) 直接取色 → 失效为透明；普通页面与暖白页底同色不易察觉，
+ * 但浮层叠在深色遮罩之上会"穿透"显半透明。这里给所有浅色浮层补足实底+暖色投影。
+ * ============================================================ */
+.arco-modal,
+.arco-drawer,
+.arco-select-dropdown,
+.arco-dropdown,
+.arco-picker-container,
+.arco-picker-range-wrapper,
+.arco-popover-content,
+.arco-popconfirm-popup-content,
+.arco-notification,
+.arco-notification-list,
+.arco-message,
+.arco-table-filters-content,
+.arco-modal-simple {
+  background-color: #fffdfa;
+}
+.arco-modal,
+.arco-drawer,
+.arco-select-dropdown,
+.arco-dropdown,
+.arco-picker-container,
+.arco-popover-content {
+  box-shadow: 0 6px 24px rgba(120, 80, 50, 0.16);
+  border: 0.5px solid var(--clay-border);
+}
+/* 下拉/选项 hover 与选中态实底，避免透出遮罩 */
+.arco-select-dropdown .arco-select-option:hover,
+.arco-dropdown .arco-dropdown-option:hover,
+.arco-select-option.arco-select-option-active,
+.arco-dropdown-option.arco-dropdown-option-active {
+  background-color: var(--clay-bg-soft);
+}
+/* tooltip 保持深底白字（显式实底，防 token 失效后透明） */
+.arco-tooltip-content {
+  background-color: #3a322c;
+}
+
 /* ---- 通用页面留白容器 ---- */
 .page {
   padding: 20px 24px 32px;
