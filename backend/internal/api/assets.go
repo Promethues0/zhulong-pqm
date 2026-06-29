@@ -84,6 +84,19 @@ func (s *Server) createAsset(c *gin.Context) {
 		a.Confidence = 100
 	}
 	a.GroupTagsJSON = db.MarshalStrings(a.GroupTags) // ⑥ 分组标签持久化
+	// 手工 / Agent 录入未给五维分时，按算法/密钥/暴露/层级自动推导（与扫描入库口径一致），
+	// 避免 SSH 主机密钥、弱算法等被误判为 0 分 / P4。
+	if a.D1 == 0 && a.D2 == 0 && a.D3 == 0 && a.D4 == 0 && a.D5 == 0 {
+		longLived := a.CertNotAfter != nil && a.CertNotAfter.After(time.Now().AddDate(10, 0, 0))
+		d := scoring.Derive(scoring.DeriveInput{
+			Algorithm: a.Algorithm,
+			KeySize:   a.KeySize,
+			Exposure:  a.Exposure,
+			Layer:     a.Layer,
+			LongLived: longLived,
+		})
+		a.D1, a.D2, a.D3, a.D4, a.D5 = d.D1, d.D2, d.D3, d.D4, d.D5
+	}
 	s.recompute(&a)
 	if err := s.db.Create(&a).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

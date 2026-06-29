@@ -263,6 +263,8 @@ func deriveD1(in DeriveInput) int {
 		strings.Contains(algo, "ED25519"), strings.Contains(algo, "EDDSA"),
 		strings.Contains(algo, "ECC"):
 		return 70
+	case strings.Contains(algo, "DSA"), strings.Contains(algo, "DH"):
+		return 90 // 经典离散对数（DSA/DH），Shor 可破（ECDSA/ECDH 已在上一分支命中）
 	default:
 		return 70 // 未知算法保守按经典 ECC 量级处理
 	}
