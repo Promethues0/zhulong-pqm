@@ -3,6 +3,7 @@ package scan
 
 import (
 	"context"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -55,7 +56,7 @@ type Target struct {
 func ParseTargets(raw []string) []Target {
 	out := make([]Target, 0, len(raw))
 	for _, t := range raw {
-		t = strings.TrimSpace(t)
+		t = normalizeTarget(t)
 		if t == "" {
 			continue
 		}
@@ -68,6 +69,30 @@ func ParseTargets(raw []string) []Target {
 		out = append(out, Target{Host: host, Port: port})
 	}
 	return out
+}
+
+// normalizeTarget 规整用户输入：兼容直接粘贴的完整网址。
+//
+// 例：https://host/path?q#f → host；http://10.0.0.1:8443/x → 10.0.0.1:8443。
+// CIDR 写法（10.0.0.0/24）原样保留，避免被当作路径截断（展开为 TODO）。
+func normalizeTarget(t string) string {
+	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
+	// 去 scheme：http(s)://host... → host...
+	if i := strings.Index(t, "://"); i >= 0 {
+		t = t[i+3:]
+	}
+	// CIDR 原样返回。
+	if _, _, err := net.ParseCIDR(t); err == nil {
+		return t
+	}
+	// 去路径/查询/锚点：host[:port]/path?x#y → host[:port]
+	if i := strings.IndexAny(t, "/?#"); i >= 0 {
+		t = t[:i]
+	}
+	return strings.TrimSpace(t)
 }
 
 // splitHostPort 解析 "host:port"，仅在末段为合法端口号时拆分，
