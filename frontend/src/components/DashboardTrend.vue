@@ -24,7 +24,7 @@ const dayOptions = [
 
 // 三条计数序列（共用左轴）。
 const seriesDefs = [
-  { key: 'totalAssets' as const, label: '总资产', color: '#b4552d' },
+  { key: 'totalAssets' as const, label: '总资产', color: '#165DFF' },
   { key: 'p1Count' as const, label: 'P1', color: '#cb4b3f' },
   { key: 'remediatedCount' as const, label: '已改造', color: '#5a9367' },
 ]
@@ -243,7 +243,7 @@ defineExpose({ load })
 }
 .single-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-bottom: 6px;
 }
 .chart {
@@ -252,17 +252,17 @@ defineExpose({ load })
   display: block;
 }
 .grid line {
-  stroke: var(--clay-border);
+  stroke: var(--brand-border);
   stroke-width: 1;
   stroke-dasharray: 2 4;
 }
 .y-label {
-  fill: var(--clay-text-soft);
+  fill: var(--brand-text-soft);
   font-size: 11px;
   text-anchor: end;
 }
 .x-label {
-  fill: var(--clay-text-soft);
+  fill: var(--brand-text-soft);
   font-size: 11px;
   text-anchor: middle;
 }
@@ -285,7 +285,7 @@ defineExpose({ load })
   text-anchor: start;
 }
 .pt {
-  stroke: #fffdfa;
+  stroke: #FFFFFF;
   stroke-width: 1.2;
 }
 .chart-legend {
@@ -297,7 +297,7 @@ defineExpose({ load })
 }
 .lg {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   display: inline-flex;
   align-items: center;
   gap: 6px;

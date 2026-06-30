@@ -40,7 +40,7 @@ function dotColor(h: ScoreHistory): string {
   const dir = levelDirection(h)
   if (dir === 'up') return '#cb4b3f'
   if (dir === 'down') return '#5a9367'
-  return '#db855c'
+  return '#FF7D00'
 }
 
 // 时间线按时间倒序展示；折线按时间正序。
@@ -155,20 +155,20 @@ defineExpose({ load })
 .head-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .spark-wrap {
   position: relative;
   margin-bottom: 16px;
   padding: 8px 10px;
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 8px;
 }
 .spark {
@@ -178,7 +178,7 @@ defineExpose({ load })
 }
 .spark-line {
   fill: none;
-  stroke: #b4552d;
+  stroke: #165DFF;
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -189,7 +189,7 @@ defineExpose({ load })
   top: 8px;
   right: 12px;
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .tl {
   padding-top: 4px;
@@ -198,7 +198,7 @@ defineExpose({ load })
   padding: 4px 0;
 }
 .tl-item--hl {
-  background: linear-gradient(90deg, rgba(219, 133, 92, 0.1), transparent);
+  background: linear-gradient(90deg, rgba(64, 128, 255, 0.1), transparent);
   border-radius: 6px;
   padding: 6px 8px;
   margin-left: -8px;
@@ -212,7 +212,7 @@ defineExpose({ load })
 .tl-score {
   font-size: 18px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .tl-shift {
   font-size: 12px;
@@ -233,15 +233,15 @@ defineExpose({ load })
 }
 .tl-profile {
   font-size: 12px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .tl-by {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .tl-time {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-left: auto;
 }
 </style>

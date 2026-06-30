@@ -1,0 +1,124 @@
+/*
+ * 烛龙 PQM 视觉主题「字节跳动蓝」(Arco Design 品牌蓝 #165DFF)
+ * ----------------------------------------------------------------
+ * 设计原则：只覆写 --primary-* 蓝色阶（Arco 以 rgb(var(--primary-N)) 取色）与
+ * 自有 --brand-* 辅助变量；其余 --color-text/bg/fill/border 一律【沿用 Arco 默认冷灰】。
+ *
+ * 为什么不再像旧「黏土橙」主题那样用 RGB 三元组覆写 --color-* ：
+ *   Arco 有大量规则形如  color: var(--color-text-3) / background: var(--color-bg-2)，
+ *   直接把 token 当完整颜色用。一旦把 --color-text-3 写成三元组「134,144,156」，
+ *   这些规则即变成非法值被丢弃 → 占位符/次级文本回退成深色、浮层失底变半透明。
+ *   旧主题为此打了一堆「实底修复」补丁；这里从根上改回 Arco 默认色，问题消失。
+ */
+
+/* ---- 字节跳动蓝基础调色板 + Arco 主色阶（仅这两类需覆写） ---- */
+:root,
+body {
+  --brand-accent: #165dff; /* 主强调色（字节跳动蓝 / ArcoBlue 6） */
+  --brand-accent-2: #4080ff; /* 次级强调色（ArcoBlue 5） */
+  --brand-bg: #f7f8fa; /* 冷灰页底 */
+  --brand-bg-soft: #f2f3f5; /* 卡片/分隔冷灰 */
+  --brand-text: #1d2129; /* 主文本 */
+  --brand-text-soft: #86909c; /* 次文本 / 占位灰 */
+  --brand-border: #e5e6eb; /* 描边 */
+
+  /* ArcoBlue primary 色阶 1→10（Arco 以 rgb(var(--primary-N)) 取色，故为三元组） */
+  --primary-1: 232, 243, 255; /* #E8F3FF */
+  --primary-2: 190, 218, 255; /* #BEDAFF */
+  --primary-3: 148, 191, 255; /* #94BFFF */
+  --primary-4: 106, 161, 255; /* #6AA1FF */
+  --primary-5: 64, 128, 255; /* #4080FF */
+  --primary-6: 22, 93, 255; /* #165DFF 标准主色 */
+  --primary-7: 14, 66, 210; /* #0E42D2 */
+  --primary-8: 7, 44, 166; /* #072CA6 */
+  --primary-9: 3, 26, 121; /* #031A79 */
+  --primary-10: 0, 13, 77; /* #000D4D */
+}
+
+/* ---- 字体：Hanken Grotesk 优先，系统无衬线回退 ---- */
+html,
+body {
+  font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--brand-bg);
+  color: var(--brand-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ---- 冷灰底色铺到 Arco 容器 ---- */
+.arco-layout {
+  background-color: var(--brand-bg);
+}
+
+/* ---- 卡片：中等圆角、冷色描边 ---- */
+.arco-card {
+  border-radius: 12px;
+  border-color: var(--brand-border);
+}
+.arco-card-bordered {
+  border: 1px solid var(--brand-border);
+}
+
+/* ---- 输入框 placeholder 统一灰色（显式兜底，保证各类输入一致为灰） ---- */
+.arco-input-wrapper .arco-input::placeholder,
+.arco-textarea-wrapper .arco-textarea::placeholder,
+.arco-select-view-single .arco-select-view-input::placeholder,
+.arco-select-view-multiple .arco-select-view-input::placeholder,
+.arco-input-tag .arco-input-tag-input::placeholder,
+.arco-input-number .arco-input::placeholder,
+.arco-picker input::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #86909c !important;
+  -webkit-text-fill-color: #86909c !important;
+}
+
+/* ---- 全局滚动条冷化 ---- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--brand-border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c9cdd4;
+}
+
+/* ---- 浮层防半透明兜底（Arco 默认已实底，这里再加投影/描边统一观感） ---- */
+.arco-modal,
+.arco-drawer,
+.arco-select-dropdown,
+.arco-dropdown,
+.arco-picker-container,
+.arco-popover-content {
+  box-shadow: 0 6px 24px rgba(20, 40, 80, 0.14);
+  border: 0.5px solid var(--brand-border);
+}
+
+/* ---- 通用页面留白容器 ---- */
+.page {
+  padding: 20px 24px 32px;
+}
+.page-header {
+  margin-bottom: 18px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand-text);
+  margin: 0;
+}
+.page-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--brand-text-soft);
+}

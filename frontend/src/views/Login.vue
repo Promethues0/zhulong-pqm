@@ -103,8 +103,8 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(1200px 600px at 50% -10%, #fbeee2 0%, transparent 60%),
-    var(--clay-bg);
+    radial-gradient(1200px 600px at 50% -10%, #E8F3FF 0%, transparent 60%),
+    var(--brand-bg);
   overflow: hidden;
 }
 .login-bg-glow {
@@ -112,7 +112,7 @@ async function handleLogin() {
   width: 520px;
   height: 520px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(219, 133, 92, 0.22), transparent 70%);
+  background: radial-gradient(circle, rgba(64, 128, 255, 0.22), transparent 70%);
   top: 12%;
   filter: blur(8px);
   pointer-events: none;
@@ -122,7 +122,7 @@ async function handleLogin() {
   padding: 14px 18px 26px;
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(122, 52, 24, 0.14);
-  background: rgba(255, 253, 250, 0.96);
+  background: rgba(255, 255, 255, 0.96);
   z-index: 1;
 }
 .login-brand {
@@ -133,26 +133,26 @@ async function handleLogin() {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: var(--clay-accent);
-  color: #faf7f2;
+  background: var(--brand-accent);
+  color: #F7F8FA;
   font-size: 30px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 14px;
-  box-shadow: 0 8px 22px rgba(180, 85, 45, 0.32);
+  box-shadow: 0 8px 22px rgba(22, 93, 255, 0.32);
 }
 .login-title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
   letter-spacing: 0.5px;
 }
 .login-sub {
   margin-top: 6px;
   font-size: 13px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .login-btn {
   margin-top: 4px;
@@ -163,12 +163,12 @@ async function handleLogin() {
   margin-top: 18px;
   text-align: center;
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .login-foot {
   margin-top: 26px;
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   opacity: 0.8;
   z-index: 1;
 }

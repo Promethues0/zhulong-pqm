@@ -16,9 +16,9 @@ const sloCode = ref<string>('')
 
 // SLO 卡片状态色：越界=红，临界(≥阈值90%)=橙，否则=绿。证书/覆盖率类按 breached。
 function sloColor(s: SloSummary): string {
-  if (s.breached) return '#c62828'
-  if (s.threshold > 0 && s.value >= s.threshold * 0.9) return '#e8772e'
-  return '#2e7d32'
+  if (s.breached) return '#cb4b3f'
+  if (s.threshold > 0 && s.value >= s.threshold * 0.9) return '#FF7D00'
+  return '#5a9367'
 }
 
 const slos = computed(() => dash.value?.sloSummary ?? [])
@@ -235,21 +235,21 @@ onMounted(load)
 .dash-head { display: flex; align-items: flex-end; justify-content: space-between; }
 .slo-row { margin-bottom: 4px; row-gap: 12px; }
 .slo-card {
-  background: #fffdfa; border: 1px solid var(--clay-border); border-top: 3px solid;
+  background: #FFFFFF; border: 1px solid var(--brand-border); border-top: 3px solid;
   border-radius: 10px; padding: 12px 14px; height: 100%;
 }
-.slo-code { font-size: 11px; color: var(--clay-text-soft); font-weight: 600; }
+.slo-code { font-size: 11px; color: var(--brand-text-soft); font-weight: 600; }
 .slo-val { font-size: 24px; font-weight: 700; line-height: 1.1; margin-top: 2px; }
 .slo-unit { font-size: 12px; font-weight: 500; margin-left: 2px; }
-.slo-name { font-size: 11px; color: var(--clay-text); margin-top: 2px; min-height: 15px; }
-.slo-th { font-size: 10px; color: var(--clay-text-tertiary); margin-top: 4px; }
+.slo-name { font-size: 11px; color: var(--brand-text); margin-top: 2px; min-height: 15px; }
+.slo-th { font-size: 10px; color: var(--brand-text-tertiary); margin-top: 4px; }
 .block-card { margin-top: 16px; }
-.muted { font-size: 12px; color: var(--clay-text-soft); }
+.muted { font-size: 12px; color: var(--brand-text-soft); }
 .empty-inline { padding: 14px 0; }
 .cert-row {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--clay-border);
+  gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--brand-border);
 }
 .cert-row:last-child { border-bottom: none; }
-.cert-name { font-size: 13px; color: var(--clay-text); }
+.cert-name { font-size: 13px; color: var(--brand-text); }
 </style>

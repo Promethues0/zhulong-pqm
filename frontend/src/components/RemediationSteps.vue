@@ -16,7 +16,7 @@ function dotColor(status: string): string {
     case 'failed':
       return 'rgb(var(--red-6))'
     default:
-      return 'var(--clay-border)'
+      return 'var(--brand-border)'
   }
 }
 </script>
@@ -57,7 +57,7 @@ function dotColor(status: string): string {
 .step-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .step-sim {
   font-size: 12px;
@@ -65,13 +65,13 @@ function dotColor(status: string): string {
 }
 .step-detail {
   font-size: 13px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 4px;
   line-height: 1.5;
 }
 .step-at {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 3px;
 }
 </style>

@@ -235,13 +235,13 @@ onMounted(() => { load(); loadProfiles() })
 .filter-card { margin: 16px 0; }
 .filter-card :deep(.arco-card-body) { padding: 16px; }
 .block-card { margin-top: 16px; }
-.muted { font-size: 12px; color: var(--clay-text-soft); font-weight: 400; }
-.p1-row { color: var(--clay-accent); font-weight: 600; }
+.muted { font-size: 12px; color: var(--brand-text-soft); font-weight: 400; }
+.p1-row { color: var(--brand-accent); font-weight: 600; }
 .profile-chip {
-  border: 1px solid var(--clay-border); border-radius: 10px; padding: 10px 14px;
-  background: #fffdfa; min-width: 180px;
+  border: 1px solid var(--brand-border); border-radius: 10px; padding: 10px 14px;
+  background: #FFFFFF; min-width: 180px;
 }
-.profile-chip.active { border-color: var(--clay-accent); background: #fbeee2; }
-.pc-name { font-size: 13px; font-weight: 600; color: var(--clay-text); }
-.pc-w { font-size: 12px; color: var(--clay-text-soft); margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.profile-chip.active { border-color: var(--brand-accent); background: #E8F3FF; }
+.pc-name { font-size: 13px; font-weight: 600; color: var(--brand-text); }
+.pc-w { font-size: 12px; color: var(--brand-text-soft); margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
 </style>

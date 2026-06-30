@@ -216,7 +216,7 @@ defineExpose({ load })
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .mono {
@@ -224,9 +224,9 @@ defineExpose({ load })
 }
 .code {
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 </style>

@@ -568,11 +568,11 @@ onBeforeUnmount(() => {
 }
 .field-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 .hit {
-  color: var(--clay-accent);
+  color: var(--brand-accent);
   font-weight: 600;
 }
 .hit-tag {
@@ -580,7 +580,7 @@ onBeforeUnmount(() => {
   font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .fail-reason {
   margin-left: 6px;
@@ -597,13 +597,13 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid var(--clay-border);
+  border-top: 1px solid var(--brand-border);
 }
 .drawer-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .result-desc :deep(.arco-descriptions-item-label) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
 }
 </style>

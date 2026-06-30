@@ -219,8 +219,8 @@ watch(
   gap: 6px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: var(--clay-text-soft);
-  background: var(--clay-bg-soft);
+  color: var(--brand-text-soft);
+  background: var(--brand-bg-soft);
   border-radius: 8px;
   padding: 10px 12px;
   margin-bottom: 14px;
@@ -235,23 +235,23 @@ watch(
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   border-radius: 8px;
   padding: 6px 10px;
   cursor: pointer;
   transition: all 0.18s;
-  background: #fffdfa;
+  background: #FFFFFF;
 }
 .cluster-tab:hover {
-  border-color: var(--clay-accent-2);
+  border-color: var(--brand-accent-2);
 }
 .cluster-tab--active {
-  border-color: var(--clay-accent);
-  background: #fbeee2;
+  border-color: var(--brand-accent);
+  background: #E8F3FF;
 }
 .cluster-count {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .merge-form {
   margin-top: 4px;
@@ -263,6 +263,6 @@ watch(
 }
 .field-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 </style>

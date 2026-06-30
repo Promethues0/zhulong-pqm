@@ -157,7 +157,7 @@ onMounted(loadList)
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .empty-inline {
   padding: 28px 0;
@@ -169,35 +169,35 @@ onMounted(loadList)
   gap: 8px;
 }
 .report-item {
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.18s;
-  background: #fffdfa;
+  background: #FFFFFF;
 }
 .report-item:hover {
-  border-color: var(--clay-accent-2);
+  border-color: var(--brand-accent-2);
 }
 .report-item--active {
-  border-color: var(--clay-accent);
-  background: #fbeee2;
+  border-color: var(--brand-accent);
+  background: #E8F3FF;
 }
 .report-item-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.3;
 }
 .report-item-meta {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 4px;
 }
 
 /* markdown 渲染暖色排版 */
 .markdown-body {
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.7;
   font-size: 14px;
   max-width: 100%;
@@ -206,13 +206,13 @@ onMounted(loadList)
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3) {
-  color: var(--clay-text);
+  color: var(--brand-text);
   font-weight: 700;
   margin: 1.2em 0 0.6em;
 }
 .markdown-body :deep(h1) {
   font-size: 22px;
-  border-bottom: 2px solid var(--clay-border);
+  border-bottom: 2px solid var(--brand-border);
   padding-bottom: 8px;
 }
 .markdown-body :deep(h2) {
@@ -222,17 +222,17 @@ onMounted(loadList)
   font-size: 15px;
 }
 .markdown-body :deep(a) {
-  color: var(--clay-accent);
+  color: var(--brand-accent);
 }
 .markdown-body :deep(code) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 13px;
 }
 .markdown-body :deep(pre) {
-  background: #2b2622;
-  color: #f3ede4;
+  background: #1D2129;
+  color: #F2F3F5;
   border-radius: 10px;
   padding: 14px 16px;
   overflow-x: auto;
@@ -249,20 +249,20 @@ onMounted(loadList)
 }
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   padding: 8px 12px;
   text-align: left;
 }
 .markdown-body :deep(th) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   font-weight: 600;
 }
 .markdown-body :deep(blockquote) {
-  border-left: 4px solid var(--clay-accent-2);
+  border-left: 4px solid var(--brand-accent-2);
   margin: 12px 0;
   padding: 4px 16px;
-  color: var(--clay-text-soft);
-  background: var(--clay-bg-soft);
+  color: var(--brand-text-soft);
+  background: var(--brand-bg-soft);
   border-radius: 0 8px 8px 0;
 }
 .markdown-body :deep(ul),

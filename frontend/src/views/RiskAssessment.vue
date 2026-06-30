@@ -54,8 +54,8 @@ const liveHndl = computed(() => dims.d2 >= 60 && dims.d3 >= 60)
 const summaryCards = computed(() => {
   const s = summary.value
   return [
-    { key: 'P1', label: 'P1 极高', color: '#b4552d', bucket: s?.p1 },
-    { key: 'P2', label: 'P2 高', color: '#db855c', bucket: s?.p2 },
+    { key: 'P1', label: 'P1 极高', color: '#cb4b3f', bucket: s?.p1 },
+    { key: 'P2', label: 'P2 高', color: '#FF7D00', bucket: s?.p2 },
     { key: 'P3', label: 'P3 中', color: '#d6a93f', bucket: s?.p3 },
     { key: 'P4', label: 'P4 低', color: '#5a9367', bucket: s?.p4 },
   ]
@@ -305,7 +305,7 @@ onMounted(loadAll)
             </div>
             <div class="sum-extra">
               <span>极高风险</span>
-              <strong style="color: var(--clay-accent)">{{ summary?.criticalCount ?? 0 }}</strong>
+              <strong style="color: var(--brand-accent)">{{ summary?.criticalCount ?? 0 }}</strong>
             </div>
           </a-card>
         </a-col>
@@ -326,18 +326,18 @@ onMounted(loadAll)
 .weight-badge {
   font-size: 11px;
   color: #fff;
-  background: var(--clay-accent-2);
+  background: var(--brand-accent-2);
   border-radius: 6px;
   padding: 1px 6px;
   margin-left: 4px;
 }
 .opt-sub {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-size: 12px;
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 
 .preset-block {
@@ -346,7 +346,7 @@ onMounted(loadAll)
 .preset-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-bottom: 12px;
 }
 .preset-btn {
@@ -366,7 +366,7 @@ onMounted(loadAll)
 .live-card {
   text-align: center;
   padding: 8px 0;
-  background: linear-gradient(160deg, #fffdfa 0%, #f8efe6 100%);
+  background: linear-gradient(160deg, #FFFFFF 0%, #f8efe6 100%);
 }
 .live-score {
   font-size: 56px;
@@ -375,7 +375,7 @@ onMounted(loadAll)
 }
 .live-label {
   font-size: 13px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 .live-badges {
@@ -387,7 +387,7 @@ onMounted(loadAll)
 .live-asset {
   margin-top: 12px;
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 
 .sum-grid {
@@ -397,7 +397,7 @@ onMounted(loadAll)
 }
 .sum-cell {
   border-left: 4px solid;
-  background: #fffdfa;
+  background: #FFFFFF;
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -407,19 +407,19 @@ onMounted(loadAll)
 }
 .sum-label {
   font-size: 12px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-top: 2px;
 }
 .sum-avg {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .sum-extra {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   padding: 3px 0;
 }
 </style>

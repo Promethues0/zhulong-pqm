@@ -51,8 +51,8 @@ const metricCards = computed<MetricCard[]>(() => [
     label: '密码使用点总数',
     value: data.value?.totalAssets ?? 0,
     icon: IconStorage,
-    bg: '#fbeee2',
-    fg: '#b4552d',
+    bg: '#E8F3FF',
+    fg: '#165DFF',
     accent: false,
   },
   {
@@ -60,8 +60,8 @@ const metricCards = computed<MetricCard[]>(() => [
     label: 'P1 立即处理',
     value: data.value?.p1Count ?? 0,
     icon: IconExclamationCircleFill,
-    bg: '#fae3db',
-    fg: '#b4552d',
+    bg: '#FFECE8',
+    fg: '#cb4b3f',
     accent: true,
   },
   {
@@ -69,8 +69,8 @@ const metricCards = computed<MetricCard[]>(() => [
     label: 'HNDL 重点关注',
     value: data.value?.hndlCount ?? 0,
     icon: IconClockCircle,
-    bg: '#f6ece0',
-    fg: '#c76e49',
+    bg: '#FFF7E8',
+    fg: '#FF7D00',
     accent: true,
   },
   {
@@ -78,8 +78,8 @@ const metricCards = computed<MetricCard[]>(() => [
     label: '极高风险',
     value: data.value?.criticalCount ?? 0,
     icon: IconThunderbolt,
-    bg: '#fae3db',
-    fg: '#b4552d',
+    bg: '#FFECE8',
+    fg: '#cb4b3f',
     accent: true,
   },
   {
@@ -87,8 +87,8 @@ const metricCards = computed<MetricCard[]>(() => [
     label: '平均风险分',
     value: data.value?.avgScore ?? 0,
     icon: IconBarChart,
-    bg: '#f3ede4',
-    fg: '#8a5a3a',
+    bg: '#F2F3F5',
+    fg: '#4E5969',
     accent: false,
   },
 ])
@@ -96,8 +96,8 @@ const metricCards = computed<MetricCard[]>(() => [
 const priorities = computed(() => {
   const s = summary.value
   return [
-    { key: 'P1', label: 'P1 立即处理', window: '0-3 月', color: '#b4552d', bucket: s?.p1 },
-    { key: 'P2', label: 'P2 近期', window: '3-6 月', color: '#db855c', bucket: s?.p2 },
+    { key: 'P1', label: 'P1 立即处理', window: '0-3 月', color: '#cb4b3f', bucket: s?.p1 },
+    { key: 'P2', label: 'P2 近期', window: '3-6 月', color: '#FF7D00', bucket: s?.p2 },
     { key: 'P3', label: 'P3 规划', window: '6-12 月', color: '#d6a93f', bucket: s?.p3 },
     { key: 'P4', label: 'P4 监测', window: '持续', color: '#5a9367', bucket: s?.p4 },
   ]
@@ -169,7 +169,7 @@ onMounted(load)
             <div class="metric-body">
               <div
                 class="metric-value"
-                :style="{ color: m.accent ? 'var(--clay-accent)' : 'var(--clay-text)' }"
+                :style="{ color: m.accent ? 'var(--brand-accent)' : 'var(--brand-text)' }"
               >
                 {{ m.value }}
               </div>
@@ -197,10 +197,10 @@ onMounted(load)
                   :stroke-width="14"
                   :color="
                     l.key === 'L4'
-                      ? '#b4552d'
+                      ? '#165DFF'
                       : l.key === 'L3'
-                        ? '#c76e49'
-                        : '#db855c'
+                        ? '#6AA1FF'
+                        : '#4080FF'
                   "
                   :show-text="false"
                   class="layer-bar"
@@ -302,7 +302,7 @@ onMounted(load)
 }
 .metric-label {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 3px;
 }
 
@@ -311,7 +311,7 @@ onMounted(load)
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .empty-inline {
   padding: 18px 0;
@@ -331,7 +331,7 @@ onMounted(load)
 }
 .layer-name {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .layer-bar {
   flex: 1;
@@ -339,7 +339,7 @@ onMounted(load)
 .layer-count {
   text-align: right;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 
 .prio-grid {
@@ -352,7 +352,7 @@ onMounted(load)
   border-left-width: 4px;
   border-radius: 10px;
   padding: 12px 14px;
-  background: #fffdfa;
+  background: #FFFFFF;
 }
 .prio-top {
   display: flex;
@@ -367,7 +367,7 @@ onMounted(load)
 .prio-label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .prio-count {
   font-size: 24px;
@@ -376,6 +376,6 @@ onMounted(load)
 }
 .prio-meta {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 </style>

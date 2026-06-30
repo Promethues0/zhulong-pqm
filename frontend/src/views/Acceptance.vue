@@ -96,9 +96,9 @@ const resultColumns = [
 const overviewCards = computed(() => {
   const r = activeRun.value
   return [
-    { key: 'total', label: '用例总数', value: r?.total ?? 0, color: '#2b2622' },
+    { key: 'total', label: '用例总数', value: r?.total ?? 0, color: '#1D2129' },
     { key: 'passed', label: '通过', value: r?.passed ?? 0, color: '#5a9367' },
-    { key: 'conditional', label: '有条件', value: r?.conditional ?? 0, color: '#db855c' },
+    { key: 'conditional', label: '有条件', value: r?.conditional ?? 0, color: '#FF7D00' },
     { key: 'failed', label: '未通过', value: r?.failed ?? 0, color: '#cb4b3f' },
   ]
 })
@@ -512,7 +512,7 @@ onBeforeUnmount(stopPoll)
             v-if="running"
             :percent="(activeRun.progress ?? 0) / 100"
             :stroke-width="8"
-            color="#b4552d"
+            color="#165DFF"
             class="ov-progress"
           />
         </a-card>
@@ -800,11 +800,11 @@ onBeforeUnmount(stopPoll)
   margin-left: 4px;
 }
 .opt-sub {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-size: 12px;
 }
 .dim-text {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .mono {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -818,13 +818,13 @@ onBeforeUnmount(stopPoll)
 }
 .label-hint {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
   margin-left: 6px;
 }
 .label-tip {
   margin-left: 4px;
-  color: var(--clay-accent-2);
+  color: var(--brand-accent-2);
   cursor: help;
 }
 .run-actions {
@@ -835,7 +835,7 @@ onBeforeUnmount(stopPoll)
 }
 .run-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 
 /* 总览卡 */
@@ -850,8 +850,8 @@ onBeforeUnmount(stopPoll)
 }
 .ov-cell {
   border-top: 3px solid;
-  background: linear-gradient(160deg, #fffdfa 0%, #f8efe6 100%);
-  border: 1px solid var(--clay-border);
+  background: linear-gradient(160deg, #FFFFFF 0%, #f8efe6 100%);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 14px 16px;
   text-align: center;
@@ -863,7 +863,7 @@ onBeforeUnmount(stopPoll)
 }
 .ov-label {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 .ov-foot {
@@ -871,7 +871,7 @@ onBeforeUnmount(stopPoll)
   align-items: center;
   gap: 28px;
   flex-wrap: wrap;
-  border-top: 1px solid var(--clay-border);
+  border-top: 1px solid var(--brand-border);
   padding-top: 14px;
 }
 .ov-gate,
@@ -882,11 +882,11 @@ onBeforeUnmount(stopPoll)
 }
 .ov-gate-label {
   font-size: 13px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .ov-gate-hint {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .ov-progress {
   margin-top: 14px;
@@ -913,19 +913,19 @@ onBeforeUnmount(stopPoll)
   gap: 8px;
 }
 .run-item {
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.18s;
-  background: #fffdfa;
+  background: #FFFFFF;
 }
 .run-item:hover {
-  border-color: var(--clay-accent-2);
+  border-color: var(--brand-accent-2);
 }
 .run-item--active {
-  border-color: var(--clay-accent);
-  background: #fbeee2;
+  border-color: var(--brand-accent);
+  background: #E8F3FF;
 }
 .run-item-head {
   display: flex;
@@ -936,7 +936,7 @@ onBeforeUnmount(stopPoll)
 .run-item-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -956,14 +956,14 @@ onBeforeUnmount(stopPoll)
   color: #5a9367;
 }
 .c-cond {
-  color: #db855c;
+  color: #FF7D00;
 }
 .c-fail {
   color: #cb4b3f;
 }
 .run-item-time {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 4px;
 }
 
@@ -974,8 +974,8 @@ onBeforeUnmount(stopPoll)
   gap: 10px;
 }
 .risk-item {
-  border-left: 3px solid var(--clay-accent-2);
-  background: var(--clay-bg-soft);
+  border-left: 3px solid var(--brand-accent-2);
+  background: var(--brand-bg-soft);
   border-radius: 0 8px 8px 0;
   padding: 8px 12px;
 }
@@ -987,24 +987,24 @@ onBeforeUnmount(stopPoll)
 .risk-code {
   font-size: 13px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .risk-desc {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-top: 4px;
   line-height: 1.5;
 }
 .risk-disp {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 3px;
 }
 
 /* 签署区 */
 .sign-block {
-  background: linear-gradient(135deg, #fbeee2, #f6ece0);
-  border: 1px solid var(--clay-border);
+  background: linear-gradient(135deg, #E8F3FF, #f6ece0);
+  border: 1px solid var(--brand-border);
   border-radius: 12px;
   padding: 16px 18px;
 }
@@ -1020,7 +1020,7 @@ onBeforeUnmount(stopPoll)
 }
 .sign-signer {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .sign-actions {
   display: flex;
@@ -1030,7 +1030,7 @@ onBeforeUnmount(stopPoll)
 }
 .sign-hash {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 12px;
   word-break: break-all;
 }
@@ -1040,7 +1040,7 @@ onBeforeUnmount(stopPoll)
 
 /* markdown 渲染暖色排版（与 Reports.vue 一致口径） */
 .markdown-body {
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.7;
   font-size: 14px;
   max-width: 100%;
@@ -1049,13 +1049,13 @@ onBeforeUnmount(stopPoll)
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3) {
-  color: var(--clay-text);
+  color: var(--brand-text);
   font-weight: 700;
   margin: 1.2em 0 0.6em;
 }
 .markdown-body :deep(h1) {
   font-size: 22px;
-  border-bottom: 2px solid var(--clay-border);
+  border-bottom: 2px solid var(--brand-border);
   padding-bottom: 8px;
 }
 .markdown-body :deep(h2) {
@@ -1065,17 +1065,17 @@ onBeforeUnmount(stopPoll)
   font-size: 15px;
 }
 .markdown-body :deep(a) {
-  color: var(--clay-accent);
+  color: var(--brand-accent);
 }
 .markdown-body :deep(code) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 13px;
 }
 .markdown-body :deep(pre) {
-  background: #2b2622;
-  color: #f3ede4;
+  background: #1D2129;
+  color: #F2F3F5;
   border-radius: 10px;
   padding: 14px 16px;
   overflow-x: auto;
@@ -1092,20 +1092,20 @@ onBeforeUnmount(stopPoll)
 }
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   padding: 8px 12px;
   text-align: left;
 }
 .markdown-body :deep(th) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   font-weight: 600;
 }
 .markdown-body :deep(blockquote) {
-  border-left: 4px solid var(--clay-accent-2);
+  border-left: 4px solid var(--brand-accent-2);
   margin: 12px 0;
   padding: 4px 16px;
-  color: var(--clay-text-soft);
-  background: var(--clay-bg-soft);
+  color: var(--brand-text-soft);
+  background: var(--brand-bg-soft);
   border-radius: 0 8px 8px 0;
 }
 .markdown-body :deep(ul),

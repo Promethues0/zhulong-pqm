@@ -69,10 +69,10 @@ const diffSummaryCards = computed(() => {
   if (!s) return []
   return [
     { key: 'added', label: '新增', value: s.added, color: '#5a9367' },
-    { key: 'removed', label: '移除', value: s.removed, color: '#6f655c' },
-    { key: 'algoChanged', label: '算法变更', value: s.algoChanged, color: '#db855c' },
+    { key: 'removed', label: '移除', value: s.removed, color: '#86909C' },
+    { key: 'algoChanged', label: '算法变更', value: s.algoChanged, color: '#FF7D00' },
     { key: 'certRotated', label: '证书续期', value: s.certRotated, color: '#4b7bb5' },
-    { key: 'statusChanged', label: '状态变化', value: s.statusChanged, color: '#8a7a68' },
+    { key: 'statusChanged', label: '状态变化', value: s.statusChanged, color: '#86909C' },
     { key: 'levelChanged', label: '等级变化', value: s.levelChanged, color: '#cb4b3f' },
   ]
 })
@@ -397,11 +397,11 @@ onMounted(load)
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .mono {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -410,15 +410,15 @@ onMounted(load)
 }
 .snap-name {
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .field-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 .arrow {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 
 /* diff 汇总卡 */
@@ -429,9 +429,9 @@ onMounted(load)
   margin-bottom: 18px;
 }
 .diff-cell {
-  border-top: 3px solid var(--clay-border);
-  background: linear-gradient(160deg, #fffdfa 0%, #f8efe6 100%);
-  border: 1px solid var(--clay-border);
+  border-top: 3px solid var(--brand-border);
+  background: linear-gradient(160deg, #FFFFFF 0%, #f8efe6 100%);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 12px 10px;
   text-align: center;
@@ -443,7 +443,7 @@ onMounted(load)
 }
 .diff-label {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 
@@ -453,7 +453,7 @@ onMounted(load)
   gap: 6px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-bottom: 12px;
 }
 .sub-title--mt {
@@ -470,7 +470,7 @@ onMounted(load)
   background: #5a9367;
 }
 .dot-rm {
-  background: var(--clay-text-soft);
+  background: var(--brand-text-soft);
 }
 
 .entry-list {
@@ -485,19 +485,19 @@ onMounted(load)
   gap: 8px;
   padding: 7px 12px;
   border-radius: 8px;
-  border-left: 3px solid var(--clay-border);
-  background: var(--clay-bg-soft);
+  border-left: 3px solid var(--brand-border);
+  background: var(--brand-bg-soft);
 }
 .entry-item--add {
   border-left-color: #5a9367;
 }
 .entry-item--rm {
-  border-left-color: var(--clay-text-soft);
+  border-left-color: var(--brand-text-soft);
   opacity: 0.8;
 }
 .entry-name {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -518,13 +518,13 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   border-radius: 8px;
-  background: #fffdfa;
+  background: #FFFFFF;
 }
 .algo-name {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .algo-delta-val {
   display: inline-flex;
@@ -540,6 +540,6 @@ onMounted(load)
   color: #cb4b3f;
 }
 .algo-delta-val.flat {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 </style>

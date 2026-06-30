@@ -67,7 +67,7 @@ const distRows = computed(() => {
   const a = afterDist.value
   return [
     { key: 'p1', label: 'P1 极高', color: '#cb4b3f', before: b.p1, after: a.p1 },
-    { key: 'p2', label: 'P2 高', color: '#db855c', before: b.p2, after: a.p2 },
+    { key: 'p2', label: 'P2 高', color: '#FF7D00', before: b.p2, after: a.p2 },
     { key: 'p3', label: 'P3 中', color: '#d6a93f', before: b.p3, after: a.p3 },
     { key: 'p4', label: 'P4 低', color: '#5a9367', before: b.p4, after: a.p4 },
   ]
@@ -392,7 +392,7 @@ onMounted(load)
   font-size: 12px;
 }
 .opt-builtin {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-size: 12px;
 }
 .lock-alert {
@@ -410,7 +410,7 @@ onMounted(load)
 }
 .slider-label {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .slider {
   width: 100%;
@@ -419,7 +419,7 @@ onMounted(load)
   text-align: right;
   font-weight: 600;
   font-size: 13px;
-  color: var(--clay-accent);
+  color: var(--brand-accent);
 }
 .sum-row {
   display: flex;
@@ -427,7 +427,7 @@ onMounted(load)
   align-items: center;
   padding: 10px 12px;
   margin-top: 8px;
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 8px;
   font-size: 14px;
 }
@@ -456,12 +456,12 @@ onMounted(load)
 .preview-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .shift-badge {
   font-size: 12px;
   color: #fff;
-  background: var(--clay-accent-2);
+  background: var(--brand-accent-2);
   border-radius: 6px;
   padding: 2px 8px;
 }
@@ -487,7 +487,7 @@ onMounted(load)
 }
 .dist-bar-track {
   height: 9px;
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -497,12 +497,12 @@ onMounted(load)
   transition: width 0.3s ease;
 }
 .dist-bar--before {
-  background: #d6c6b2;
+  background: #C9CDD4;
 }
 .dist-nums {
   font-size: 12px;
   text-align: right;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .dist-nums .up {
   color: #cb4b3f;
@@ -520,7 +520,7 @@ onMounted(load)
 }
 .lg {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -532,9 +532,9 @@ onMounted(load)
   border-radius: 3px;
 }
 .lg-before::before {
-  background: #d6c6b2;
+  background: #C9CDD4;
 }
 .lg-after::before {
-  background: var(--clay-accent);
+  background: var(--brand-accent);
 }
 </style>

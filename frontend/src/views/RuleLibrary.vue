@@ -52,7 +52,7 @@ function layerColor(layer: string): string {
   }
 }
 
-/** 风险提示三色（极高=红 / 高=橙 / 中=金，黏土橙暖色体系）。 */
+/** 风险提示三色（极高=红 / 高=橙 / 中=金，暖橙暖色体系）。 */
 function riskColor(risk: string): string {
   switch (risk) {
     case '极高':
@@ -83,8 +83,8 @@ function priorityColor(p: string): string {
 const statCards = computed(() => {
   const s = stats.value
   return [
-    { key: 'total', label: '检查项总数', value: s?.total ?? 0, color: '#2b2622' },
-    { key: 'p1', label: 'P1 高优规则', value: s?.p1High ?? 0, color: '#b4552d' },
+    { key: 'total', label: '检查项总数', value: s?.total ?? 0, color: '#1D2129' },
+    { key: 'p1', label: 'P1 高优规则', value: s?.p1High ?? 0, color: '#cb4b3f' },
     { key: 'critical', label: '极高风险规则', value: s?.critical ?? 0, color: '#cb4b3f' },
   ]
 })
@@ -368,11 +368,11 @@ onMounted(load)
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .mono {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -390,9 +390,9 @@ onMounted(load)
   margin-bottom: 16px;
 }
 .stat-cell {
-  border-top: 3px solid var(--clay-border);
-  background: linear-gradient(160deg, #fffdfa 0%, #f8efe6 100%);
-  border: 1px solid var(--clay-border);
+  border-top: 3px solid var(--brand-border);
+  background: linear-gradient(160deg, #FFFFFF 0%, #f8efe6 100%);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 14px 16px;
   text-align: center;
@@ -404,7 +404,7 @@ onMounted(load)
 }
 .stat-label {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 8px;
 }
 .layer-cell {
@@ -433,8 +433,8 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #fbeee2, #f6ece0);
-  border: 1px solid var(--clay-border);
+  background: linear-gradient(135deg, #E8F3FF, #f6ece0);
+  border: 1px solid var(--brand-border);
   border-radius: 12px;
   padding: 14px 18px;
   margin-bottom: 18px;
@@ -442,10 +442,10 @@ onMounted(load)
 .rule-banner-id {
   font-size: 18px;
   font-weight: 800;
-  color: var(--clay-accent);
+  color: var(--brand-accent);
 }
 .rule-desc :deep(.arco-descriptions-item-label) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   width: 120px;
 }
 </style>

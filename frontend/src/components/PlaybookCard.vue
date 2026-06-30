@@ -59,7 +59,7 @@ defineProps<{ playbook: Playbook }>()
 .pb-name {
   font-size: 15px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .pb-section {
   margin-bottom: 14px;
@@ -67,7 +67,7 @@ defineProps<{ playbook: Playbook }>()
 .pb-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-bottom: 6px;
 }
 .pb-steps {
@@ -76,11 +76,11 @@ defineProps<{ playbook: Playbook }>()
 }
 .pb-steps li {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.7;
 }
 .pb-meta {
-  border-top: 1px solid var(--clay-border);
+  border-top: 1px solid var(--brand-border);
   padding-top: 12px;
 }
 .pb-meta-row {
@@ -93,10 +93,10 @@ defineProps<{ playbook: Playbook }>()
   flex-shrink: 0;
   width: 84px;
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .pb-meta-val {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 </style>

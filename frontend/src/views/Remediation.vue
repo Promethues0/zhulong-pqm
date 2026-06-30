@@ -49,10 +49,10 @@ const loadingDevices = ref(false)
 const loadingPlaybooks = ref(false)
 
 const summaryCards = computed(() => [
-  { key: 'planned', label: '待执行', value: summary.planned, color: '#db855c' },
-  { key: 'running', label: '执行中', value: summary.running, color: '#b4552d' },
+  { key: 'planned', label: '待执行', value: summary.planned, color: '#FF7D00' },
+  { key: 'running', label: '执行中', value: summary.running, color: '#165DFF' },
   { key: 'done', label: '已完成', value: summary.done, color: '#5a9367' },
-  { key: 'total', label: '工单总数', value: summary.total, color: '#2b2622' },
+  { key: 'total', label: '工单总数', value: summary.total, color: '#1D2129' },
 ])
 
 // ================= ① 改造工单 =================
@@ -522,7 +522,7 @@ onBeforeUnmount(stopPoll)
               <a-progress
                 :percent="(record.progress ?? 0) / 100"
                 :stroke-width="8"
-                color="#b4552d"
+                color="#165DFF"
                 size="small"
               />
             </template>
@@ -898,19 +898,19 @@ onBeforeUnmount(stopPoll)
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .opt-sub {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-size: 12px;
 }
 .field-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 
@@ -923,8 +923,8 @@ onBeforeUnmount(stopPoll)
 }
 .sum-cell {
   border-left: 4px solid;
-  background: linear-gradient(160deg, #fffdfa 0%, #f8efe6 100%);
-  border: 1px solid var(--clay-border);
+  background: linear-gradient(160deg, #FFFFFF 0%, #f8efe6 100%);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 14px 16px;
 }
@@ -935,7 +935,7 @@ onBeforeUnmount(stopPoll)
 }
 .sum-label {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 
@@ -947,7 +947,7 @@ onBeforeUnmount(stopPoll)
 }
 .dev-name {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 
 /* 设备卡片 */
@@ -968,7 +968,7 @@ onBeforeUnmount(stopPoll)
 .dev-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .dev-row {
   display: flex;
@@ -978,14 +978,14 @@ onBeforeUnmount(stopPoll)
 }
 .dev-vendor {
   font-size: 13px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .dev-endpoint {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-bottom: 10px;
   word-break: break-all;
 }
@@ -1007,12 +1007,12 @@ onBeforeUnmount(stopPoll)
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-top: 1px solid var(--clay-border);
+  border-top: 1px solid var(--brand-border);
   padding-top: 12px;
 }
 .dev-latency {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 
 /* 剧本库 */
@@ -1025,8 +1025,8 @@ onBeforeUnmount(stopPoll)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #fbeee2, #f6ece0);
-  border: 1px solid var(--clay-border);
+  background: linear-gradient(135deg, #E8F3FF, #f6ece0);
+  border: 1px solid var(--brand-border);
   border-radius: 12px;
   padding: 16px 18px;
   margin-bottom: 18px;
@@ -1034,16 +1034,16 @@ onBeforeUnmount(stopPoll)
 .task-track {
   font-size: 18px;
   font-weight: 800;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .task-target {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 .task-desc :deep(.arco-descriptions-item-label),
 .ev-desc :deep(.arco-descriptions-item-label) {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
 }
 .task-actions {
   display: flex;
@@ -1053,25 +1053,25 @@ onBeforeUnmount(stopPoll)
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin: 20px 0 12px;
 }
 .deliver-block {
   margin-top: 18px;
-  border-top: 1px solid var(--clay-border);
+  border-top: 1px solid var(--brand-border);
   padding-top: 14px;
 }
 .deliver-row {
   display: flex;
   gap: 8px;
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-bottom: 8px;
 }
 .deliver-key {
   flex-shrink: 0;
   width: 72px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .deliver-val {
   flex: 1;
@@ -1079,8 +1079,8 @@ onBeforeUnmount(stopPoll)
 
 /* 新建改造 modal 内的轨道预览 */
 .pb-preview {
-  background: var(--clay-bg-soft);
-  border: 1px solid var(--clay-border);
+  background: var(--brand-bg-soft);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 16px;
@@ -1091,12 +1091,12 @@ onBeforeUnmount(stopPoll)
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-bottom: 8px;
 }
 .pb-preview-row {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.6;
 }
 .pb-preview-steps {
@@ -1105,7 +1105,7 @@ onBeforeUnmount(stopPoll)
 }
 .pb-preview-steps li {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.6;
 }
 </style>

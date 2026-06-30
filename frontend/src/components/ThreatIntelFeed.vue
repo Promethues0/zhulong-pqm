@@ -255,7 +255,7 @@ defineExpose({ load })
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .feed {
@@ -266,11 +266,11 @@ defineExpose({ load })
   overflow-y: auto;
 }
 .intel-item {
-  border: 1px solid var(--clay-border);
-  border-left: 3px solid var(--clay-accent-2);
+  border: 1px solid var(--brand-border);
+  border-left: 3px solid var(--brand-accent-2);
   border-radius: 10px;
   padding: 12px 14px;
-  background: #fffdfa;
+  background: #FFFFFF;
 }
 .intel-head {
   display: flex;
@@ -281,18 +281,18 @@ defineExpose({ load })
 }
 .intel-time {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   flex-shrink: 0;
 }
 .intel-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-top: 8px;
 }
 .intel-summary {
   font-size: 13px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 4px;
   line-height: 1.5;
 }
@@ -301,7 +301,7 @@ defineExpose({ load })
 }
 .meta-label {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .algo-tag {
   font-family: 'SFMono-Regular', Consolas, Menlo, monospace;

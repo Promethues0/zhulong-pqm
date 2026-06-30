@@ -562,7 +562,7 @@ onMounted(load)
   justify-content: space-between;
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-bottom: 12px;
 }
 </style>

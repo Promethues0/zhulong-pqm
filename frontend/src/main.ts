@@ -6,7 +6,7 @@ import '@arco-design/web-vue/dist/arco.css'
 
 import App from './App.vue'
 import router from './router'
-import './theme/clay.css'
+import './theme/brand.css'
 
 const app = createApp(App)
 

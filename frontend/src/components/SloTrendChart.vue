@@ -138,8 +138,8 @@ defineExpose({ load })
         <svg :viewBox="`0 0 ${W} ${H}`" class="chart" preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id="sloArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#db855c" stop-opacity="0.28" />
-              <stop offset="100%" stop-color="#db855c" stop-opacity="0.02" />
+              <stop offset="0%" stop-color="#FF7D00" stop-opacity="0.28" />
+              <stop offset="100%" stop-color="#FF7D00" stop-opacity="0.02" />
             </linearGradient>
           </defs>
 
@@ -233,12 +233,12 @@ defineExpose({ load })
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .empty-hint {
   text-align: center;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-size: 13px;
   padding: 40px 0;
 }
@@ -251,18 +251,18 @@ defineExpose({ load })
   display: block;
 }
 .grid line {
-  stroke: var(--clay-border);
+  stroke: var(--brand-border);
   stroke-width: 1;
   stroke-dasharray: 2 4;
 }
 .y-label {
-  fill: var(--clay-text-soft);
+  fill: var(--brand-text-soft);
   font-size: 11px;
   text-anchor: end;
 }
 .line {
   fill: none;
-  stroke: #b4552d;
+  stroke: #165DFF;
   stroke-width: 2.2;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -289,8 +289,8 @@ defineExpose({ load })
   fill: #8a7d70;
 }
 .pt {
-  fill: #b4552d;
-  stroke: #fffdfa;
+  fill: #165DFF;
+  stroke: #FFFFFF;
   stroke-width: 1.5;
 }
 .pt--breached {
@@ -304,7 +304,7 @@ defineExpose({ load })
 }
 .lg {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -317,7 +317,7 @@ defineExpose({ load })
   border-top-style: solid;
 }
 .lg-line::before {
-  border-color: #b4552d;
+  border-color: #165DFF;
 }
 .lg-th::before {
   border-color: #cb4b3f;

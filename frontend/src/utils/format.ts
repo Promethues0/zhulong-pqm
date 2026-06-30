@@ -211,8 +211,8 @@ export function guessTrack(algo?: string): string {
 // ============ R3 ④ 验收自动化展示工具 ============
 
 /**
- * 验收判定中文与配色（严格沿用既有 tag 色阶 + 黏土橙体系）：
- * pass=绿 / conditional=橙（黏土橙 #DB855C，挂 RiskRef） / fail=红 / skip=灰。
+ * 验收判定中文与配色（严格沿用既有 tag 色阶 + 暖橙体系）：
+ * pass=绿 / conditional=橙（暖橙 #FF7D00，挂 RiskRef） / fail=红 / skip=灰。
  */
 export function verdictMeta(verdict: string): { label: string; color: string } {
   switch (verdict) {
@@ -332,8 +332,8 @@ export function certUrgency(notAfter?: string | null): 'expired' | 'soon' | 'ok'
 // ============ R3 ⑤ 持续监测展示工具 ============
 
 /**
- * 监测事件严重度中文与配色（FR-7.13 三级，黏土橙暖色系）：
- * p1=红 / warning=橙（黏土橙 #DB855C）/ inspect=黄。
+ * 监测事件严重度中文与配色（FR-7.13 三级，暖橙暖色系）：
+ * p1=红 / warning=橙（暖橙 #FF7D00）/ inspect=黄。
  */
 export function severityMeta(severity: string): { label: string; color: string } {
   switch (severity) {
@@ -348,13 +348,13 @@ export function severityMeta(severity: string): { label: string; color: string }
   }
 }
 
-/** 严重度对应的语义色值（卡片描边/折线，黏土橙体系）。 */
+/** 严重度对应的语义色值（卡片描边/折线，暖橙体系）。 */
 export function severityColor(severity: string): string {
   switch (severity) {
     case 'p1':
       return '#cb4b3f'
     case 'warning':
-      return '#db855c'
+      return '#FF7D00'
     case 'inspect':
       return '#d6a93f'
     default:
@@ -439,7 +439,7 @@ export function sloStateMeta(state: SloState): { label: string; color: string } 
     case 'red':
       return { label: '越界', color: '#cb4b3f' }
     case 'orange':
-      return { label: '临界', color: '#db855c' }
+      return { label: '临界', color: '#FF7D00' }
     case 'yellow':
       return { label: '观察', color: '#d6a93f' }
     default:

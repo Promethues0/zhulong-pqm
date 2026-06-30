@@ -233,10 +233,10 @@ watch(
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .g-name {
   font-weight: 500;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 </style>

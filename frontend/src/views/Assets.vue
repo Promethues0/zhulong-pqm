@@ -306,7 +306,7 @@ function certColor(notAfter?: string | null): string {
   const u = certUrgency(notAfter)
   if (u === 'expired') return 'rgb(var(--red-6))'
   if (u === 'soon') return 'rgb(var(--orange-6))'
-  return 'var(--clay-text)'
+  return 'var(--brand-text)'
 }
 
 // 闭环联动：资产 → 改造编排，携带资产与建议算法，落地后自动打开新建改造 modal 预填。
@@ -634,7 +634,7 @@ onMounted(() => {
                 :percent="(active[d.key] ?? 0) / 100"
                 :stroke-width="10"
                 :show-text="false"
-                color="#b4552d"
+                color="#165DFF"
                 class="dim-bar"
               />
               <span class="dim-val">{{ active[d.key] ?? 0 }}</span>
@@ -737,15 +737,15 @@ onMounted(() => {
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .score-val {
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .card-title-icon {
   display: inline-flex;
@@ -759,11 +759,11 @@ onMounted(() => {
   row-gap: 16px;
 }
 .group-card {
-  border: 1px solid var(--clay-border);
-  border-left: 3px solid var(--clay-accent-2);
+  border: 1px solid var(--brand-border);
+  border-left: 3px solid var(--brand-accent-2);
   border-radius: 12px;
   padding: 14px 16px;
-  background: #fffdfa;
+  background: #FFFFFF;
   cursor: pointer;
   transition:
     box-shadow 0.18s,
@@ -771,13 +771,13 @@ onMounted(() => {
   height: 100%;
 }
 .group-card:hover {
-  box-shadow: 0 6px 16px rgba(180, 85, 45, 0.12);
+  box-shadow: 0 6px 16px rgba(22, 93, 255, 0.12);
   transform: translateY(-2px);
 }
 .group-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -785,13 +785,13 @@ onMounted(() => {
 .group-count {
   font-size: 28px;
   font-weight: 800;
-  color: var(--clay-accent);
+  color: var(--brand-accent);
   line-height: 1.1;
   margin-top: 8px;
 }
 .group-count-label {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 2px;
 }
 .group-tags {
@@ -804,8 +804,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #fbeee2, #f6ece0);
-  border: 1px solid var(--clay-border);
+  background: linear-gradient(135deg, #E8F3FF, #f6ece0);
+  border: 1px solid var(--brand-border);
   border-radius: 12px;
   padding: 16px 18px;
   margin-bottom: 18px;
@@ -817,7 +817,7 @@ onMounted(() => {
 }
 .detail-score-label {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 4px;
 }
 
@@ -827,7 +827,7 @@ onMounted(() => {
 .dd-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
   margin-bottom: 12px;
 }
 .dim-row {
@@ -839,10 +839,10 @@ onMounted(() => {
 }
 .dim-name {
   font-size: 13px;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .dim-w {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-size: 11px;
   margin-left: 6px;
 }
@@ -857,7 +857,7 @@ onMounted(() => {
 /* 证据链 */
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .mono {
@@ -884,11 +884,11 @@ onMounted(() => {
   gap: 10px;
 }
 .evidence-item {
-  border: 1px solid var(--clay-border);
+  border: 1px solid var(--brand-border);
   border-radius: 10px;
   padding: 10px 12px;
-  background: #fffdfa;
-  border-left: 3px solid var(--clay-accent-2);
+  background: #FFFFFF;
+  border-left: 3px solid var(--brand-accent-2);
 }
 .evidence-head {
   display: flex;
@@ -899,20 +899,20 @@ onMounted(() => {
 }
 .evidence-time {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   flex-shrink: 0;
 }
 .evidence-raw {
   margin-top: 8px;
   padding: 8px 10px;
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 6px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   white-space: pre-wrap;
 }
 .evidence-hash {
   margin-top: 6px;
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 </style>

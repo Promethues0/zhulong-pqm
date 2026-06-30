@@ -249,7 +249,7 @@ watch(
 <style scoped>
 .field-hint {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 6px;
 }
 </style>

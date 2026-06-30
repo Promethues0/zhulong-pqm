@@ -235,11 +235,11 @@ onMounted(load)
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 .dim {
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .mono {
   font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
@@ -251,6 +251,6 @@ onMounted(load)
   gap: 6px;
 }
 .actor-name {
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 </style>

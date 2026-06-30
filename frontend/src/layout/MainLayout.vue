@@ -177,7 +177,7 @@ function logout() {
 
 .app-sider {
   background: linear-gradient(180deg, #fffdf9 0%, #f6efe6 100%);
-  border-right: 1px solid var(--clay-border);
+  border-right: 1px solid var(--brand-border);
 }
 
 .brand {
@@ -195,33 +195,33 @@ function logout() {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--clay-accent);
-  color: #faf7f2;
+  background: var(--brand-accent);
+  color: #F7F8FA;
   font-weight: 700;
   font-size: 19px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(180, 85, 45, 0.28);
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.28);
 }
 .brand-name {
   font-size: 16px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
   line-height: 1.2;
 }
 .brand-sub {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 2px;
 }
 
 .app-header {
   height: 60px;
-  background: rgba(255, 253, 250, 0.86);
+  background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--clay-border);
+  border-bottom: 1px solid var(--brand-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -238,7 +238,7 @@ function logout() {
 .header-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .header-right {
   display: flex;
@@ -254,19 +254,19 @@ function logout() {
   transition: background 0.2s;
 }
 .user-chip:hover {
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
 }
 .user-avatar {
-  background: var(--clay-accent-2);
+  background: var(--brand-accent-2);
 }
 .user-name {
   font-size: 14px;
-  color: var(--clay-text);
+  color: var(--brand-text);
   font-weight: 500;
 }
 
 .app-content {
-  background: var(--clay-bg);
+  background: var(--brand-bg);
   overflow-y: auto;
 }
 

@@ -139,7 +139,7 @@ defineExpose({ load })
 }
 .muted {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 400;
 }
 
@@ -153,7 +153,7 @@ defineExpose({ load })
 }
 .corner {
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   font-weight: 600;
   text-align: left;
   white-space: nowrap;
@@ -166,19 +166,19 @@ defineExpose({ load })
 .method-code {
   font-size: 13px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
 }
 .method-label {
   font-size: 11px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
   margin-top: 2px;
 }
 .layer-head {
   font-size: 13px;
   font-weight: 700;
-  color: var(--clay-text);
+  color: var(--brand-text);
   text-align: center;
-  background: var(--clay-bg-soft);
+  background: var(--brand-bg-soft);
   border-radius: 8px;
   padding: 6px 10px;
 }
@@ -202,9 +202,9 @@ defineExpose({ load })
   color: #3f7150;
 }
 .dot--off {
-  background: var(--clay-bg-soft);
-  border: 1px dashed var(--clay-border);
-  color: var(--clay-text-soft);
+  background: var(--brand-bg-soft);
+  border: 1px dashed var(--brand-border);
+  color: var(--brand-text-soft);
 }
 .dot-num {
   line-height: 1;
@@ -222,7 +222,7 @@ defineExpose({ load })
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--clay-text-soft);
+  color: var(--brand-text-soft);
 }
 .legend-dot {
   width: 16px;
@@ -231,6 +231,6 @@ defineExpose({ load })
 }
 .legend-p1 {
   font-weight: 600;
-  color: var(--clay-accent);
+  color: var(--brand-accent);
 }
 </style>
