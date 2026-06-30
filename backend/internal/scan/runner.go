@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,13 @@ import (
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scoring"
 )
+
+// logWrite 记录后台 goroutine 中被静默吞掉的 GORM 写错误（不改变控制流，仅让失败可见）。
+func logWrite(err error, ctx string) {
+	if err != nil {
+		log.Printf("scan: %s 失败: %v", ctx, err)
+	}
+}
 
 // unmarshalTargets 反序列化 ScanJob.Targets(JSON 字符串)。
 func unmarshalTargets(s string) []string {
@@ -62,7 +70,7 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 	job.Status = model.JobRunning
 	job.StartedAt = &now
 	job.LastRunAt = &now // 调度器/监测复扫复用此入口，留痕本次执行时间
-	r.db.Save(&job)
+	logWrite(r.db.Save(&job).Error, fmt.Sprintf("保存任务 %d 运行态", job.ID))
 
 	targets := ParseTargets(job.TargetList)
 	if len(targets) == 0 {
@@ -95,7 +103,7 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 				if firstReason == "" {
 					firstReason = reason
 				}
-				r.db.Create(&model.ScanResult{
+				logWrite(r.db.Create(&model.ScanResult{
 					ScanJobID: job.ID,
 					Host:      t.Host,
 					Port:      t.Port,
@@ -104,7 +112,7 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 					Status:    "failed",
 					Error:     reason,
 					Raw:       fmt.Sprintf(`{"error":%q}`, err.Error()),
-				})
+				}).Error, fmt.Sprintf("记录探测失败结果 %s:%d", t.Host, t.Port))
 				failed++
 				return
 			}
@@ -164,20 +172,21 @@ func (r *Runner) persistResult(job *model.ScanJob, res *model.ScanResult) {
 			Order("id desc").First(&prev).Error
 		if err == nil && sameHandshake(&prev, res) {
 			prev.LastSeen = &now
-			r.db.Model(&model.ScanResult{}).Where("id = ?", prev.ID).Update("last_seen", &now)
+			logWrite(r.db.Model(&model.ScanResult{}).Where("id = ?", prev.ID).Update("last_seen", &now).Error,
+				fmt.Sprintf("增量刷新结果 %d LastSeen", prev.ID))
 			return
 		}
 	}
 
 	res.FirstSeen = &now
 	res.LastSeen = &now
-	r.db.Create(res)
+	logWrite(r.db.Create(res).Error, fmt.Sprintf("落库扫描结果 %s:%d", res.Host, res.Port))
 	r.recordHits(res)
 
 	asset := r.upsertAsset(res, job.Exposure)
 	if asset != nil {
 		res.AssetID = asset.ID
-		r.db.Save(res)
+		logWrite(r.db.Save(res).Error, fmt.Sprintf("回写结果 %d 资产关联", res.ID))
 		r.writeAssetEvidence(asset.ID, res) // ② 证据链：扫描入库顺带挂证据
 	}
 }
@@ -226,7 +235,7 @@ func (r *Runner) writeAssetEvidence(assetID uint, res *model.ScanResult) {
 		conf = firstHit.Confidence
 	}
 	now := time.Now()
-	r.db.Create(&model.AssetEvidence{
+	logWrite(r.db.Create(&model.AssetEvidence{
 		AssetID:    assetID,
 		Source:     evidenceSourceFor(res.Method),
 		RuleRef:    ruleRef,
@@ -235,7 +244,7 @@ func (r *Runner) writeAssetEvidence(assetID uint, res *model.ScanResult) {
 		Confidence: conf,
 		ScannedAt:  &now,
 		CreatedAt:  now,
-	})
+	}).Error, fmt.Sprintf("追加资产 %d 证据", assetID))
 }
 
 // recordHits 计算并落库本条结果命中的规则（仅 Enabled 规则；FR-3.8.2 只追加）。
@@ -257,7 +266,7 @@ func (r *Runner) saveHits(scanResultID uint, candidates []model.RuleHit) {
 		}
 		h.ScanResultID = scanResultID
 		h.CreatedAt = time.Now()
-		r.db.Create(&h)
+		logWrite(r.db.Create(&h).Error, fmt.Sprintf("落库结果 %d 规则命中 %s", scanResultID, h.RuleID))
 	}
 }
 
@@ -286,13 +295,13 @@ func (r *Runner) ImportResult(jobID uint, res *model.ScanResult, candidates []mo
 	res.ScanJobID = jobID
 	res.FirstSeen = nowPtr()
 	res.LastSeen = nowPtr()
-	r.db.Create(res)
+	logWrite(r.db.Create(res).Error, fmt.Sprintf("导入落库结果（任务 %d）", jobID))
 	r.saveHits(res.ID, candidates)
 
 	asset := r.upsertImportedAsset(res, exposure)
 	if asset != nil {
 		res.AssetID = asset.ID
-		r.db.Save(res)
+		logWrite(r.db.Save(res).Error, fmt.Sprintf("回写导入结果 %d 资产关联", res.ID))
 		r.writeAssetEvidence(asset.ID, res) // ② 证据链：导入入库顺带挂证据
 	}
 	return res
@@ -351,10 +360,10 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 	if err == gorm.ErrRecordNotFound {
 		asset = model.CryptoAsset{System: "证书导入", Status: model.StatusDiscovered}
 		apply(&asset)
-		r.db.Create(&asset)
+		logWrite(r.db.Create(&asset).Error, "新建导入证书资产")
 	} else if err == nil {
 		apply(&asset)
-		r.db.Save(&asset)
+		logWrite(r.db.Save(&asset).Error, fmt.Sprintf("合并导入证书资产 %d", asset.ID))
 	} else {
 		return nil
 	}
@@ -367,7 +376,7 @@ func (r *Runner) finish(job *model.ScanJob, status, errMsg string) {
 	job.Status = status
 	job.Error = errMsg
 	job.FinishedAt = &fin
-	r.db.Save(job)
+	logWrite(r.db.Save(job).Error, fmt.Sprintf("保存任务 %d 终态 %s", job.ID, status))
 }
 
 // upsertAsset 据扫描结果建立或合并 CryptoAsset（去重键 Host+Port）。
@@ -421,11 +430,11 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 	if err == gorm.ErrRecordNotFound {
 		asset = model.CryptoAsset{System: "扫描发现", Status: model.StatusDiscovered}
 		apply(&asset)
-		r.db.Create(&asset)
+		logWrite(r.db.Create(&asset).Error, fmt.Sprintf("新建扫描资产 %s", endpoint))
 	} else if err == nil {
 		// 已存在：合并刷新探测到的字段（保留人工已确认状态）。
 		apply(&asset)
-		r.db.Save(&asset)
+		logWrite(r.db.Save(&asset).Error, fmt.Sprintf("合并扫描资产 %d", asset.ID))
 	} else {
 		return nil
 	}

@@ -804,7 +804,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #E8F3FF, #f6ece0);
+  background: linear-gradient(135deg, #E8F3FF, #F2F3F5);
   border: 1px solid var(--brand-border);
   border-radius: 12px;
   padding: 16px 18px;

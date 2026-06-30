@@ -3,6 +3,8 @@ package remediate
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -10,6 +12,13 @@ import (
 
 	"zhulong-pqm/internal/model"
 )
+
+// logWrite 记录后台 goroutine 中被静默吞掉的 GORM 写错误（不改变控制流，仅让失败可见）。
+func logWrite(err error, ctx string) {
+	if err != nil {
+		log.Printf("remediate: %s 失败: %v", ctx, err)
+	}
+}
 
 // stepPause 步骤之间的停顿，让前端轮询能观察到逐步推进的进度。
 const stepPause = 600 * time.Millisecond
@@ -110,7 +119,7 @@ func (o *Orchestrator) runConnectivity(ctx context.Context, task *model.Remediat
 	} else {
 		device.Status = model.DeviceStatusOffline
 	}
-	o.db.Save(device)
+	logWrite(o.db.Save(device).Error, fmt.Sprintf("保存设备 %d 探测状态", device.ID))
 
 	stepAt := time.Now()
 	step.At = &stepAt
@@ -243,7 +252,7 @@ func (o *Orchestrator) advanceAsset(assetID *uint, to string) {
 	if a.Status == to || !model.AssetTransitionAllowed(a.Status, to) {
 		return
 	}
-	o.db.Model(&a).Update("status", to)
+	logWrite(o.db.Model(&a).Update("status", to).Error, fmt.Sprintf("推进资产 %d 状态至 %s", a.ID, to))
 }
 
 // fail 真实失败收尾：置 failed 与错误信息，并把首个未完成步骤标为 failed。
@@ -267,7 +276,7 @@ func (o *Orchestrator) fail(task *model.RemediationTask, msg string) {
 func (o *Orchestrator) save(task *model.RemediationTask) {
 	task.StepsJSON = marshalSteps(task.Steps)
 	task.EvidenceJSON = marshalEvidence(task.Evidence)
-	o.db.Save(task)
+	logWrite(o.db.Save(task).Error, fmt.Sprintf("保存工单 %d 进度/状态", task.ID))
 }
 
 // isAcceptance 判断步骤是否为验收步骤（步骤名以“验收”结尾）。

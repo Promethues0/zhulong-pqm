@@ -273,7 +273,7 @@ defineExpose({ load })
   stroke-dasharray: 6 4;
 }
 .baseline {
-  stroke: #a99d90;
+  stroke: #A9AEB8;
   stroke-width: 1.4;
   stroke-dasharray: 4 4;
 }
@@ -286,7 +286,7 @@ defineExpose({ load })
   fill: #cb4b3f;
 }
 .baseline-label {
-  fill: #8a7d70;
+  fill: #86909C;
 }
 .pt {
   fill: #165DFF;
@@ -324,7 +324,7 @@ defineExpose({ load })
   border-top-style: dashed;
 }
 .lg-bl::before {
-  border-color: #a99d90;
+  border-color: #A9AEB8;
   border-top-style: dashed;
 }
 .lg-br::before {

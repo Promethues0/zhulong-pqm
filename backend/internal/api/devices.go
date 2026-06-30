@@ -2,7 +2,11 @@ package api
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +15,38 @@ import (
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/remediate"
 )
+
+// validateEndpoint 校验设备 endpoint，缓解 SSRF。
+//
+// 注意：PQM 本就是面向内网的扫描/编排平台，合法目标包含 RFC1918 内网地址，
+// 甚至同机网关 http://127.0.0.1:8088 —— 故【不】封禁内网/回环，只挡住真正危险且
+// 无正当用途的向量：(1) 非 http/https scheme（file://、gopher:// 等）；
+// (2) 链路本地/云元数据地址 169.254.0.0/16（经典 SSRF 取 metadata 目标）。
+func validateEndpoint(raw string) error {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil // 允许留空（未配置）
+	}
+	host := raw
+	if strings.Contains(raw, "://") {
+		u, err := url.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("endpoint 不是合法 URL")
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return fmt.Errorf("endpoint 仅支持 http/https，已拒绝 %q", u.Scheme)
+		}
+		host = u.Hostname()
+	} else if h, _, err := net.SplitHostPort(raw); err == nil {
+		host = h
+	}
+	if ip := net.ParseIP(strings.Trim(host, "[]")); ip != nil {
+		if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("endpoint 指向链路本地/云元数据地址（169.254.0.0/16），已拒绝")
+		}
+	}
+	return nil
+}
 
 // deviceReq 设备增改请求体。Capabilities 以数组传入，落库前序列化。
 type deviceReq struct {
@@ -53,6 +89,10 @@ func (s *Server) createDevice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name 必填"})
 		return
 	}
+	if err := validateEndpoint(req.Endpoint); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	dev := model.Device{
 		Name:             req.Name,
 		Type:             req.Type,
@@ -81,6 +121,10 @@ func (s *Server) updateDevice(c *gin.Context) {
 	}
 	var req deviceReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateEndpoint(req.Endpoint); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

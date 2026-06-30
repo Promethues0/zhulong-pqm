@@ -24,4 +24,17 @@ export default defineConfig(({ command }) => ({
       },
     },
   },
+  build: {
+    // 把体积大且少变的依赖拆成独立 chunk：Arco UI 与 vue 全家桶各自缓存，
+    // 应用代码更新时浏览器无需重下 Arco（原先全挤在 1.2M 的 index chunk 里）。
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          arco: ['@arco-design/web-vue', '@arco-design/web-vue/es/icon'],
+          vue: ['vue', 'vue-router', 'pinia'],
+          vendor: ['axios', 'marked'],
+        },
+      },
+    },
+  },
 }))

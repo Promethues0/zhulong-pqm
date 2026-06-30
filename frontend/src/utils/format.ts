@@ -358,7 +358,7 @@ export function severityColor(severity: string): string {
     case 'inspect':
       return '#d6a93f'
     default:
-      return '#a99d90'
+      return '#A9AEB8'
   }
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -13,6 +14,13 @@ import (
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scan"
 )
+
+// logWrite 记录后台 goroutine 中被静默吞掉的 GORM 写错误（不改变控制流，仅让失败可见）。
+func logWrite(err error, ctx string) {
+	if err != nil {
+		log.Printf("monitor: %s 失败: %v", ctx, err)
+	}
+}
 
 // stepPause 复扫资产间的停顿，让前端轮询观察到逐步生成的事件（与 remediate.stepPause 同构）。
 const stepPause = 300 * time.Millisecond
@@ -61,10 +69,10 @@ func (r *Runner) Run(ctx context.Context, policyID uint) RunSummary {
 	now := time.Now()
 	p.LastRunAt = &now
 	p.NextRunAt = nextRunAfter(&p, now)
-	r.db.Model(&p).Updates(map[string]any{
+	logWrite(r.db.Model(&p).Updates(map[string]any{
 		"last_run_at": p.LastRunAt,
 		"next_run_at": p.NextRunAt,
-	})
+	}).Error, fmt.Sprintf("刷新策略 %d 运行时刻", p.ID))
 
 	assets := r.scopedAssets(&p)
 	sum.AssetCount = len(assets)
@@ -173,12 +181,12 @@ func (r *Runner) writeBackAsset(a *model.CryptoAsset, res *model.ScanResult) {
 	if res.CertNotAfter != nil {
 		a.CertNotAfter = res.CertNotAfter
 	}
-	r.db.Model(a).Updates(map[string]any{
+	logWrite(r.db.Model(a).Updates(map[string]any{
 		"algorithm":      a.Algorithm,
 		"protocol":       a.Protocol,
 		"key_size":       a.KeySize,
 		"cert_not_after": a.CertNotAfter,
-	})
+	}).Error, fmt.Sprintf("回写资产 %d 复扫字段", a.ID))
 }
 
 // emitDriftP1 混合→经典回退：P1 漂移事件 + SLO-05 告警，并立即触发复评回灌（C5）。
@@ -205,10 +213,10 @@ func (r *Runner) emitDriftP1(p *model.MonitorPolicy, a *model.CryptoAsset, prevA
 		taskID := hist.ID
 		ev.ReassessTaskID = &taskID
 		ev.Detail += " " + reassessSummary(reassessed, hist)
-		r.db.Model(ev).Updates(map[string]any{
+		logWrite(r.db.Model(ev).Updates(map[string]any{
 			"reassess_task_id": ev.ReassessTaskID,
 			"detail":           ev.Detail,
-		})
+		}).Error, fmt.Sprintf("回灌事件 %d 复评结果", ev.ID))
 		sum.ReassessCount++
 		*a = *reassessed
 	}
@@ -286,12 +294,12 @@ func (r *Runner) checkCertExpiry(p *model.MonitorPolicy, a *model.CryptoAsset, s
 			existing.Title = title
 			existing.Detail = detail
 			existing.Evidence = evidence
-			r.db.Model(&existing).Updates(map[string]any{
+			logWrite(r.db.Model(&existing).Updates(map[string]any{
 				"severity": existing.Severity,
 				"title":    existing.Title,
 				"detail":   existing.Detail,
 				"evidence": db.MarshalMonEvidence(existing.Evidence),
-			})
+			}).Error, fmt.Sprintf("升级证书到期事件 %d 严重度", existing.ID))
 		}
 		return
 	}
@@ -369,7 +377,7 @@ func (r *Runner) newEvent(kind, sev string, a *model.CryptoAsset) *model.Monitor
 // saveEvent 序列化证据并落库。
 func (r *Runner) saveEvent(ev *model.MonitorEvent) {
 	ev.EvidenceJSON = db.MarshalMonEvidence(ev.Evidence)
-	r.db.Create(ev)
+	logWrite(r.db.Create(ev).Error, fmt.Sprintf("落库监测事件 %s/%s", ev.Kind, ev.Severity))
 }
 
 // ---- 小工具 ----

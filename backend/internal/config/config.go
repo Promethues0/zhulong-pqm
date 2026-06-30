@@ -2,13 +2,12 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"os"
 	"strings"
 )
-
-// devJWTSecret 开发期默认 JWT 密钥；生产务必经 ZPQM_JWT_SECRET 覆盖。
-const devJWTSecret = "zhulong-pqm-dev-secret"
 
 // Config 持有服务启动所需的全部配置项。
 type Config struct {
@@ -23,12 +22,20 @@ type Config struct {
 
 // Load 从环境变量加载配置，未设置时回落到约定的默认值。
 func Load() *Config {
-	jwtSecret := envOr("ZPQM_JWT_SECRET", devJWTSecret)
-	if jwtSecret == "" || jwtSecret == devJWTSecret {
-		log.Println("===================================================================")
-		log.Println("[WARNING] 正在使用开发默认 JWT 密钥（ZPQM_JWT_SECRET 未设置或为默认值），")
-		log.Println("[WARNING] 任何人都可伪造令牌！生产环境务必设置强随机 ZPQM_JWT_SECRET。")
-		log.Println("===================================================================")
+	// JWT 密钥：未设置时【生成进程级随机密钥】而非硬编码常量——
+	// 安全默认（无人能伪造令牌），代价是重启后旧令牌失效（需重新登录）。
+	// 生产应显式设置 ZPQM_JWT_SECRET 以保持令牌跨重启稳定。
+	jwtSecret := strings.TrimSpace(os.Getenv("ZPQM_JWT_SECRET"))
+	switch {
+	case jwtSecret == "":
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			log.Fatalf("生成随机 JWT 密钥失败: %v", err)
+		}
+		jwtSecret = hex.EncodeToString(b)
+		log.Println("[WARNING] ZPQM_JWT_SECRET 未设置，已生成进程级随机密钥（重启后令牌失效）。生产请显式设置以保持稳定。")
+	case len(jwtSecret) < 16:
+		log.Println("[WARNING] ZPQM_JWT_SECRET 过短（<16 字节），建议改用 ≥32 字节强随机密钥。")
 	}
 
 	origins := splitCSV(envOr("ZPQM_CORS_ORIGINS", "http://localhost:5390,http://127.0.0.1:5390"))
