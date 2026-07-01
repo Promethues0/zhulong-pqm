@@ -93,6 +93,13 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    // 治理巩固大屏：全屏独立路由（无侧栏 Layout），需登录。
+    path: '/screen',
+    name: 'screen',
+    component: () => import('@/views/BigScreen.vue'),
+    meta: { title: '治理巩固大屏' },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ]
 

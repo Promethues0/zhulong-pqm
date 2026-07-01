@@ -17,6 +17,11 @@ import DashboardTrend from '@/components/DashboardTrend.vue'
 
 const router = useRouter()
 
+/** 打开治理巩固大屏（新标签页，便于投到大屏 / 值班墙）。 */
+function openScreen() {
+  window.open(router.resolve('/screen').href, '_blank')
+}
+
 const loading = ref(false)
 const data = ref<Dashboard | null>(null)
 const summary = ref<ScoreSummary | null>(null)
@@ -144,10 +149,13 @@ onMounted(load)
           密码学使用点摸底进度 · 优先级窗口 P1 立即(0-3 月) / P2 近期 / P3 规划 / P4 监测
         </p>
       </div>
-      <a-button :loading="loading" @click="load">
-        <template #icon><IconRefresh /></template>
-        刷新
-      </a-button>
+      <a-space>
+        <a-button type="primary" @click="openScreen">治理巩固大屏</a-button>
+        <a-button :loading="loading" @click="load">
+          <template #icon><IconRefresh /></template>
+          刷新
+        </a-button>
+      </a-space>
     </div>
 
     <a-spin :loading="loading" style="width: 100%">

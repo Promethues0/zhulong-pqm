@@ -1,0 +1,1049 @@
+<script setup lang="ts">
+import { onMounted, onBeforeUnmount, reactive, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { dashboardApi, scoreApi, remediationApi, monitorApi, coverageApi, trendApi } from '@/api'
+import type {
+  Dashboard,
+  ScoreSummary,
+  RemediationSummary,
+  MonitorDashboard,
+  Coverage,
+  TrendResp,
+} from '@/api/types'
+
+const router = useRouter()
+
+// ---- 数据 ----
+const dash = ref<Dashboard | null>(null)
+const score = ref<ScoreSummary | null>(null)
+const rem = ref<RemediationSummary | null>(null)
+const mon = ref<MonitorDashboard | null>(null)
+const cov = ref<Coverage | null>(null)
+const trend = ref<TrendResp | null>(null)
+const updatedAt = ref('')
+
+async function fetchAll() {
+  const [d, s, r, m, c, t] = await Promise.allSettled([
+    dashboardApi.get(),
+    scoreApi.summary(),
+    remediationApi.summary(),
+    monitorApi.dashboard(),
+    coverageApi.get(),
+    trendApi.get(14),
+  ])
+  if (d.status === 'fulfilled') dash.value = d.value
+  if (s.status === 'fulfilled') score.value = s.value
+  if (r.status === 'fulfilled') rem.value = r.value
+  if (m.status === 'fulfilled') mon.value = m.value
+  if (c.status === 'fulfilled') cov.value = c.value
+  if (t.status === 'fulfilled') trend.value = t.value
+  updatedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  animateHeadline()
+}
+
+// ---- 时钟 ----
+const now = ref(new Date())
+const clockDate = computed(() =>
+  now.value.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long' }),
+)
+const clockTime = computed(() => now.value.toLocaleTimeString('zh-CN', { hour12: false }))
+
+// ---- 缩放自适应（1920×1080 设计画布） ----
+const scale = ref(1)
+function fit() {
+  scale.value = Math.min(window.innerWidth / 1920, window.innerHeight / 1080)
+}
+
+// ---- 数字滚动 ----
+const disp = reactive({ total: 0, p1: 0, hndl: 0, avg: 0, gov: 0 })
+function tween(key: keyof typeof disp, to: number, dur = 1100) {
+  const from = disp[key]
+  const t0 = performance.now()
+  function step(t: number) {
+    const k = Math.min(1, (t - t0) / dur)
+    const e = 1 - Math.pow(1 - k, 3) // easeOutCubic
+    disp[key] = from + (to - from) * e
+    if (k < 1) requestAnimationFrame(step)
+    else disp[key] = to
+  }
+  requestAnimationFrame(step)
+}
+function animateHeadline() {
+  tween('total', dash.value?.totalAssets ?? 0)
+  tween('p1', score.value?.p1.count ?? dash.value?.p1Count ?? 0)
+  tween('hndl', dash.value?.hndlCount ?? 0)
+  tween('avg', dash.value?.avgScore ?? 0)
+  tween('gov', govScore.value)
+}
+
+// ---- 治理巩固度（复合指标，成分透明可解释） ----
+const govParts = computed(() => {
+  const total = dash.value?.totalAssets ?? 0
+  const scored = score.value?.scoredCount ?? 0
+  const p1 = score.value?.p1.count ?? dash.value?.p1Count ?? 0
+  const done = rem.value?.done ?? 0
+  const remTotal = rem.value?.total ?? 0
+  const assess = total ? scored / total : 0 // 评估覆盖
+  const remed = remTotal ? done / remTotal : total ? done / total : 0 // 改造完成
+  const health = total ? 1 - p1 / total : 1 // 低危占比
+  return { assess, remed, health }
+})
+const govScore = computed(() => {
+  const g = govParts.value
+  return Math.round(100 * (0.35 * g.assess + 0.35 * g.remed + 0.3 * g.health))
+})
+const govLevel = computed(() => {
+  const v = govScore.value
+  if (v >= 80) return { t: '稳固', c: '#3fd08a' }
+  if (v >= 60) return { t: '良好', c: '#22d3ee' }
+  if (v >= 40) return { t: '推进中', c: '#f7b955' }
+  return { t: '起步', c: '#ff6b57' }
+})
+
+// ---- SVG 弧 ----
+function polar(cx: number, cy: number, r: number, deg: number) {
+  const a = ((deg - 90) * Math.PI) / 180
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+}
+function arc(cx: number, cy: number, r: number, a0: number, a1: number) {
+  const s = polar(cx, cy, r, a1)
+  const e = polar(cx, cy, r, a0)
+  const large = a1 - a0 <= 180 ? 0 : 1
+  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 0 ${e.x} ${e.y}`
+}
+// 仪表：从 -135° 到 +135°（270° 量程）
+const GA0 = -135
+const GA1 = 135
+const govArcBg = arc(150, 150, 118, GA0, GA1)
+const govArcVal = computed(() => arc(150, 150, 118, GA0, GA0 + (270 * disp.gov) / 100))
+
+// ---- 优先级漏斗 ----
+const prio = computed(() => {
+  const s = score.value
+  const items = [
+    { k: 'P1', label: 'P1 极高', count: s?.p1.count ?? 0, avg: s?.p1.avg ?? 0, c: '#ff5b52' },
+    { k: 'P2', label: 'P2 高', count: s?.p2.count ?? 0, avg: s?.p2.avg ?? 0, c: '#ff9f45' },
+    { k: 'P3', label: 'P3 中', count: s?.p3.count ?? 0, avg: s?.p3.avg ?? 0, c: '#f2c14e' },
+    { k: 'P4', label: 'P4 低', count: s?.p4.count ?? 0, avg: s?.p4.avg ?? 0, c: '#59c08a' },
+  ]
+  const max = Math.max(1, ...items.map((i) => i.count))
+  return items.map((i) => ({ ...i, pct: Math.round((i.count / max) * 100) }))
+})
+
+// ---- 分层 L1-L4 ----
+const layers = computed(() => {
+  const b = dash.value?.byLayer ?? { L1: 0, L2: 0, L3: 0, L4: 0 }
+  const items = [
+    { k: 'L1', label: 'L1 应用/会话', v: b.L1 },
+    { k: 'L2', label: 'L2 协议/传输', v: b.L2 },
+    { k: 'L3', label: 'L3 数据存储', v: b.L3 },
+    { k: 'L4', label: 'L4 硬件/根信任', v: b.L4 },
+  ]
+  const max = Math.max(1, ...items.map((i) => i.v))
+  const blues = ['#4080ff', '#3b9dff', '#22d3ee', '#165dff']
+  return items.map((i, idx) => ({ ...i, pct: Math.round((i.v / max) * 100), c: blues[idx] }))
+})
+
+// ---- 五阶段闭环 ----
+const stages = computed(() => [
+  { key: 'discover', label: '发现', v: dash.value?.totalAssets ?? 0, unit: '使用点' },
+  { key: 'catalog', label: '建档', v: dash.value?.totalAssets ?? 0, unit: 'CBOM' },
+  { key: 'assess', label: '评估', v: score.value?.scoredCount ?? 0, unit: '已评分' },
+  { key: 'remediate', label: '改造', v: rem.value?.done ?? 0, unit: '已完成' },
+  { key: 'monitor', label: '监测', v: dash.value?.totalAssets ?? 0, unit: '持续' },
+])
+
+// ---- 改造进度环 ----
+const remRing = computed(() => {
+  const r = rem.value
+  const total = r?.total ?? 0
+  const done = r?.done ?? 0
+  const pct = total ? Math.round((done / total) * 100) : 0
+  const C = 2 * Math.PI * 74
+  return {
+    total,
+    done,
+    running: r?.running ?? 0,
+    planned: r?.planned ?? 0,
+    failed: r?.failed ?? 0,
+    pct,
+    dash: `${(C * pct) / 100} ${C}`,
+  }
+})
+
+// ---- 发现方式覆盖 M1-M7 ----
+const methodNames: Record<string, string> = {
+  M1: '主动扫描',
+  M2: '被动流量',
+  M3: '主机 Agent',
+  M4: 'SBOM',
+  M5: '证书导入',
+  M6: '配置解析',
+  M7: '人工申报',
+}
+const coverage = computed(() => {
+  const c = cov.value
+  const methods = c?.methods ?? ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']
+  const cells = c?.cells ?? []
+  return methods.map((m) => {
+    const mine = cells.filter((x: any) => x.method === m)
+    const planned = mine.reduce((a: number, x: any) => a + (x.plannedRules ?? x.count ?? 0), 0)
+    const hit = mine.reduce((a: number, x: any) => a + (x.hitRules ?? x.hits ?? 0), 0)
+    return { m, name: methodNames[m] ?? m, planned, hit, active: planned > 0 }
+  })
+})
+const covMax = computed(() => Math.max(1, ...coverage.value.map((c) => c.planned)))
+
+// ---- 趋势 ----
+const trendGeom = computed(() => {
+  const pts = (trend.value?.points ?? []).slice(-14)
+  const W = 760
+  const H = 150
+  const pad = 8
+  if (pts.length < 2) return { total: '', remed: '', area: '', labels: [] as string[] }
+  const maxV = Math.max(1, ...pts.map((p) => Math.max(p.totalAssets, p.remediatedCount)))
+  const xs = (i: number) => pad + (i * (W - 2 * pad)) / (pts.length - 1)
+  const ys = (v: number) => H - pad - (v / maxV) * (H - 2 * pad)
+  const line = (sel: (p: any) => number) => pts.map((p, i) => `${i ? 'L' : 'M'} ${xs(i).toFixed(1)} ${ys(sel(p)).toFixed(1)}`).join(' ')
+  const totalLine = line((p) => p.totalAssets)
+  const area = `${totalLine} L ${xs(pts.length - 1).toFixed(1)} ${H - pad} L ${xs(0).toFixed(1)} ${H - pad} Z`
+  const labels = pts.map((p) => (p.at ? String(p.at).slice(5) : '')).filter((_, i) => i % 3 === 0 || i === pts.length - 1)
+  return { total: totalLine, remed: line((p) => p.remediatedCount), area, labels }
+})
+
+// ---- 近期 P1 事件 ----
+const events = computed(() => (mon.value?.recentP1Events ?? []).slice(0, 6))
+const certExpiring = computed(() => (mon.value?.certExpiring ?? []).length)
+
+// ---- 生命周期 ----
+let clockTimer: number | undefined
+let dataTimer: number | undefined
+onMounted(() => {
+  fit()
+  window.addEventListener('resize', fit)
+  clockTimer = window.setInterval(() => (now.value = new Date()), 1000)
+  dataTimer = window.setInterval(fetchAll, 30000)
+  fetchAll()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', fit)
+  if (clockTimer) clearInterval(clockTimer)
+  if (dataTimer) clearInterval(dataTimer)
+})
+
+function exit() {
+  router.push('/dashboard')
+}
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.()
+  else document.exitFullscreen?.()
+}
+function fmtInt(v: number) {
+  return Math.round(v).toLocaleString('en-US')
+}
+</script>
+
+<template>
+  <div class="screen-root">
+    <div class="canvas" :style="{ transform: `translate(-50%,-50%) scale(${scale})` }">
+      <!-- 背景装饰 -->
+      <div class="bg-grid"></div>
+      <div class="bg-glow"></div>
+
+      <!-- 顶栏 -->
+      <header class="hd">
+        <div class="hd-left">
+          <div class="logo">烛</div>
+          <div>
+            <div class="hd-title">烛龙 PQM · 后量子迁移治理巩固大屏</div>
+            <div class="hd-sub">ZHULONG POST-QUANTUM MIGRATION GOVERNANCE COMMAND CENTER</div>
+          </div>
+        </div>
+        <div class="hd-right">
+          <div class="clock">
+            <div class="ct">{{ clockTime }}</div>
+            <div class="cd">{{ clockDate }}</div>
+          </div>
+          <div class="live"><span class="dot"></span>实时 · {{ updatedAt || '—' }}</div>
+          <div class="hd-btns">
+            <button class="ghost" @click="toggleFullscreen">全屏</button>
+            <button class="ghost" @click="exit">返回</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- 主体三栏 -->
+      <main class="grid">
+        <!-- 左列 -->
+        <section class="col">
+          <div class="panel">
+            <div class="p-title">核心指标</div>
+            <div class="kpis">
+              <div class="kpi">
+                <div class="kv">{{ fmtInt(disp.total) }}</div>
+                <div class="kl">密码使用点</div>
+              </div>
+              <div class="kpi danger">
+                <div class="kv">{{ fmtInt(disp.p1) }}</div>
+                <div class="kl">P1 极高</div>
+              </div>
+              <div class="kpi warn">
+                <div class="kv">{{ fmtInt(disp.hndl) }}</div>
+                <div class="kl">HNDL 重点</div>
+              </div>
+              <div class="kpi">
+                <div class="kv">{{ fmtInt(disp.avg) }}</div>
+                <div class="kl">平均风险分</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="p-title">风险优先级分布</div>
+            <div class="funnel">
+              <div v-for="p in prio" :key="p.k" class="fn-row">
+                <span class="fn-lab">{{ p.label }}</span>
+                <div class="fn-track">
+                  <div class="fn-bar" :style="{ width: p.pct + '%', background: p.c, boxShadow: `0 0 12px ${p.c}88` }"></div>
+                </div>
+                <span class="fn-num" :style="{ color: p.c }">{{ p.count }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="p-title">资产分层分布 (L1–L4)</div>
+            <div class="funnel">
+              <div v-for="l in layers" :key="l.k" class="fn-row">
+                <span class="fn-lab sm">{{ l.label }}</span>
+                <div class="fn-track">
+                  <div class="fn-bar" :style="{ width: l.pct + '%', background: l.c, boxShadow: `0 0 12px ${l.c}77` }"></div>
+                </div>
+                <span class="fn-num" :style="{ color: l.c }">{{ l.v }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 中列 -->
+        <section class="col center">
+          <div class="panel gauge-panel">
+            <div class="p-title">治理巩固度</div>
+            <svg viewBox="0 0 300 210" class="gauge">
+              <defs>
+                <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#165dff" />
+                  <stop offset="55%" stop-color="#22d3ee" />
+                  <stop offset="100%" :stop-color="govLevel.c" />
+                </linearGradient>
+              </defs>
+              <path :d="govArcBg" fill="none" stroke="#12203a" stroke-width="16" stroke-linecap="round" />
+              <path :d="govArcVal" fill="none" stroke="url(#gaugeGrad)" stroke-width="16" stroke-linecap="round" class="gauge-val" />
+              <text x="150" y="140" text-anchor="middle" class="gauge-num">{{ Math.round(disp.gov) }}</text>
+              <text x="150" y="166" text-anchor="middle" class="gauge-unit">/ 100</text>
+              <text x="150" y="196" text-anchor="middle" class="gauge-lv" :fill="govLevel.c">{{ govLevel.t }}</text>
+            </svg>
+            <div class="gauge-parts">
+              <div><b>{{ Math.round(govParts.assess * 100) }}%</b><span>评估覆盖</span></div>
+              <div><b>{{ Math.round(govParts.remed * 100) }}%</b><span>改造完成</span></div>
+              <div><b>{{ Math.round(govParts.health * 100) }}%</b><span>低危占比</span></div>
+            </div>
+          </div>
+
+          <div class="panel pipe-panel">
+            <div class="p-title">五阶段治理闭环</div>
+            <svg viewBox="0 0 760 190" class="pipe">
+              <path
+                d="M 90 70 H 670"
+                fill="none"
+                stroke="#1c3050"
+                stroke-width="3"
+              />
+              <path
+                d="M 90 70 H 670"
+                fill="none"
+                stroke="#22d3ee"
+                stroke-width="3"
+                stroke-dasharray="10 14"
+                class="flow"
+              />
+              <!-- 回环 -->
+              <path
+                d="M 670 70 C 720 70 720 150 380 150 C 40 150 40 70 90 70"
+                fill="none"
+                stroke="#1c3050"
+                stroke-width="2.5"
+              />
+              <path
+                d="M 670 70 C 720 70 720 150 380 150 C 40 150 40 70 90 70"
+                fill="none"
+                stroke="#165dff"
+                stroke-width="2.5"
+                stroke-dasharray="8 16"
+                class="flow-rev"
+              />
+              <g v-for="(s, i) in stages" :key="s.key">
+                <circle :cx="90 + i * 145" cy="70" r="34" fill="#0b1730" stroke="#22d3ee" stroke-width="2" class="node" />
+                <circle :cx="90 + i * 145" cy="70" r="34" fill="none" stroke="#22d3ee" stroke-width="2" class="node-pulse" />
+                <text :x="90 + i * 145" y="64" text-anchor="middle" class="node-v">{{ s.v }}</text>
+                <text :x="90 + i * 145" y="82" text-anchor="middle" class="node-u">{{ s.unit }}</text>
+                <text :x="90 + i * 145" y="128" text-anchor="middle" class="node-l">{{ s.label }}</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="panel">
+            <div class="p-title">资产 / 改造趋势（近 14 日）</div>
+            <svg viewBox="0 0 760 160" class="trend">
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#165dff" stop-opacity="0.35" />
+                  <stop offset="100%" stop-color="#165dff" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path v-if="trendGeom.area" :d="trendGeom.area" fill="url(#areaGrad)" />
+              <path v-if="trendGeom.total" :d="trendGeom.total" fill="none" stroke="#22d3ee" stroke-width="2.5" />
+              <path v-if="trendGeom.remed" :d="trendGeom.remed" fill="none" stroke="#3fd08a" stroke-width="2.5" stroke-dasharray="5 4" />
+              <text v-if="!trendGeom.total" x="380" y="80" text-anchor="middle" class="empty">暂无足够趋势数据</text>
+            </svg>
+            <div class="legend">
+              <span><i style="background:#22d3ee"></i>资产总数</span>
+              <span><i style="background:#3fd08a"></i>已改造</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右列 -->
+        <section class="col">
+          <div class="panel">
+            <div class="p-title">改造进度</div>
+            <div class="rem-wrap">
+              <svg viewBox="0 0 180 180" class="rem-ring">
+                <circle cx="90" cy="90" r="74" fill="none" stroke="#12203a" stroke-width="14" />
+                <circle
+                  cx="90" cy="90" r="74" fill="none" stroke="#3fd08a" stroke-width="14" stroke-linecap="round"
+                  :stroke-dasharray="remRing.dash" transform="rotate(-90 90 90)" class="rem-arc"
+                />
+                <text x="90" y="86" text-anchor="middle" class="rem-pct">{{ remRing.pct }}%</text>
+                <text x="90" y="108" text-anchor="middle" class="rem-sub">完成率</text>
+              </svg>
+              <div class="rem-stats">
+                <div><b style="color:#3fd08a">{{ remRing.done }}</b><span>已完成</span></div>
+                <div><b style="color:#22d3ee">{{ remRing.running }}</b><span>执行中</span></div>
+                <div><b style="color:#f2c14e">{{ remRing.planned }}</b><span>待执行</span></div>
+                <div><b style="color:#ff5b52">{{ remRing.failed }}</b><span>失败</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="p-title">发现方式覆盖 (M1–M7)</div>
+            <div class="cov">
+              <div v-for="c in coverage" :key="c.m" class="cov-row" :class="{ off: !c.active }">
+                <span class="cov-m">{{ c.m }}</span>
+                <span class="cov-n">{{ c.name }}</span>
+                <div class="cov-track">
+                  <div class="cov-bar" :style="{ width: Math.round((c.planned / covMax) * 100) + '%' }"></div>
+                </div>
+                <span class="cov-h">{{ c.hit }}/{{ c.planned }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel evt-panel">
+            <div class="p-title">
+              监测告警 · 近期 P1 事件
+              <span class="badge" v-if="certExpiring">证书临期 {{ certExpiring }}</span>
+            </div>
+            <div class="evt-list">
+              <div v-for="(e, i) in events" :key="i" class="evt">
+                <span class="evt-dot"></span>
+                <span class="evt-name">{{ (e as any).assetName || (e as any).title || (e as any).type || 'P1 事件' }}</span>
+                <span class="evt-t">{{ String((e as any).createdAt || (e as any).at || '').slice(5, 16) }}</span>
+              </div>
+              <div v-if="!events.length" class="evt empty-evt">暂无 P1 事件 · 监测态势平稳</div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.screen-root {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(1200px 700px at 50% -10%, #0b1d3a 0%, #060a16 55%, #04060e 100%);
+  overflow: hidden;
+  z-index: 3000;
+}
+.canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: center center;
+  color: #cfe0f5;
+  font-family: 'Hanken Grotesk', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  padding: 26px 34px;
+  box-sizing: border-box;
+}
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 85%);
+  pointer-events: none;
+}
+.bg-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(600px 300px at 50% 42%, rgba(22, 93, 255, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+/* 顶栏 */
+.hd {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.22);
+  margin-bottom: 20px;
+}
+.hd::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 320px;
+  height: 2px;
+  background: linear-gradient(90deg, #22d3ee, transparent);
+}
+.hd-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #165dff, #22d3ee);
+  color: #fff;
+  font-size: 30px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 26px rgba(34, 211, 238, 0.5);
+}
+.hd-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #eaf4ff, #7fd6ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hd-sub {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #4d6a92;
+  margin-top: 4px;
+}
+.hd-right {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+.clock {
+  text-align: right;
+}
+.ct {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #d9ecff;
+}
+.cd {
+  font-size: 12px;
+  color: #5a789f;
+}
+.live {
+  font-size: 13px;
+  color: #3fd08a;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.live .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #3fd08a;
+  box-shadow: 0 0 10px #3fd08a;
+  animation: pulse 1.6s infinite;
+}
+.hd-btns {
+  display: flex;
+  gap: 10px;
+}
+.ghost {
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  color: #9fdcf0;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+.ghost:hover {
+  background: rgba(34, 211, 238, 0.18);
+}
+
+/* 栅格 */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr;
+  gap: 20px;
+  height: calc(1080px - 26px - 26px - 18px - 20px - 20px);
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+.col.center {
+  gap: 20px;
+}
+.panel {
+  position: relative;
+  background: linear-gradient(160deg, rgba(15, 32, 60, 0.72), rgba(9, 18, 36, 0.72));
+  border: 1px solid rgba(56, 116, 190, 0.28);
+  border-radius: 14px;
+  padding: 16px 18px;
+  flex: 1;
+  min-height: 0;
+  backdrop-filter: blur(4px);
+  box-shadow: inset 0 0 40px rgba(20, 60, 120, 0.12);
+}
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #22d3ee;
+  opacity: 0.7;
+}
+.panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 6px;
+}
+.panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 6px;
+}
+.p-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #bfe4ff;
+  margin-bottom: 14px;
+  padding-left: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.p-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(#22d3ee, #165dff);
+}
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffb454;
+  background: rgba(255, 159, 69, 0.14);
+  border: 1px solid rgba(255, 159, 69, 0.35);
+  padding: 1px 9px;
+  border-radius: 10px;
+}
+
+/* KPI */
+.kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: calc(100% - 32px);
+}
+.kpi {
+  border-radius: 12px;
+  background: rgba(22, 93, 255, 0.08);
+  border: 1px solid rgba(56, 116, 190, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.kpi.danger {
+  background: rgba(255, 91, 82, 0.09);
+  border-color: rgba(255, 91, 82, 0.32);
+}
+.kpi.warn {
+  background: rgba(255, 159, 69, 0.09);
+  border-color: rgba(255, 159, 69, 0.32);
+}
+.kv {
+  font-size: 40px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #eaf4ff;
+  text-shadow: 0 0 18px rgba(34, 211, 238, 0.4);
+}
+.kpi.danger .kv {
+  color: #ff7b72;
+  text-shadow: 0 0 18px rgba(255, 91, 82, 0.4);
+}
+.kpi.warn .kv {
+  color: #ffb454;
+  text-shadow: 0 0 18px rgba(255, 159, 69, 0.4);
+}
+.kl {
+  font-size: 13px;
+  color: #8fb0d6;
+}
+
+/* 漏斗 / 分层条 */
+.funnel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: calc(100% - 32px);
+}
+.fn-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fn-lab {
+  width: 66px;
+  font-size: 14px;
+  color: #a9c6e6;
+  flex-shrink: 0;
+}
+.fn-lab.sm {
+  width: 108px;
+  font-size: 13px;
+}
+.fn-track {
+  flex: 1;
+  height: 16px;
+  background: rgba(20, 40, 70, 0.6);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fn-bar {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fn-num {
+  width: 44px;
+  text-align: right;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 仪表 */
+.center {
+  display: flex;
+}
+.gauge-panel {
+  flex: 1.15;
+  display: flex;
+  flex-direction: column;
+}
+.gauge {
+  width: 100%;
+  height: calc(100% - 66px);
+  max-height: 210px;
+}
+.gauge-val {
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.6));
+  transition: none;
+}
+.gauge-num {
+  font-size: 62px;
+  font-weight: 800;
+  fill: #eaf4ff;
+  font-variant-numeric: tabular-nums;
+}
+.gauge-unit {
+  font-size: 16px;
+  fill: #5f80a8;
+}
+.gauge-lv {
+  font-size: 20px;
+  font-weight: 700;
+}
+.gauge-parts {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 6px;
+}
+.gauge-parts div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gauge-parts b {
+  font-size: 22px;
+  color: #7fd6ff;
+  font-variant-numeric: tabular-nums;
+}
+.gauge-parts span {
+  font-size: 12px;
+  color: #7f9cc0;
+}
+
+/* 闭环 */
+.pipe-panel {
+  flex: 1;
+}
+.pipe {
+  width: 100%;
+  height: calc(100% - 32px);
+}
+.flow {
+  animation: dash 1.2s linear infinite;
+}
+.flow-rev {
+  animation: dash 2.4s linear infinite reverse;
+  opacity: 0.7;
+}
+.node {
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.35));
+}
+.node-pulse {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: ring 2.4s ease-out infinite;
+}
+.node-v {
+  font-size: 24px;
+  font-weight: 800;
+  fill: #eaf4ff;
+  font-variant-numeric: tabular-nums;
+}
+.node-u {
+  font-size: 11px;
+  fill: #6f90b8;
+}
+.node-l {
+  font-size: 16px;
+  font-weight: 700;
+  fill: #9fdcf0;
+}
+
+/* 趋势 */
+.trend {
+  width: 100%;
+  height: calc(100% - 56px);
+}
+.empty {
+  fill: #4d6a92;
+  font-size: 15px;
+}
+.legend {
+  display: flex;
+  gap: 22px;
+  justify-content: center;
+  font-size: 13px;
+  color: #8fb0d6;
+}
+.legend i {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* 改造环 */
+.rem-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: calc(100% - 32px);
+}
+.rem-ring {
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
+}
+.rem-arc {
+  filter: drop-shadow(0 0 6px rgba(63, 208, 138, 0.6));
+  transition: stroke-dasharray 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rem-pct {
+  font-size: 34px;
+  font-weight: 800;
+  fill: #eaf4ff;
+  font-variant-numeric: tabular-nums;
+}
+.rem-sub {
+  font-size: 12px;
+  fill: #6f90b8;
+}
+.rem-stats {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 8px;
+}
+.rem-stats div {
+  display: flex;
+  flex-direction: column;
+}
+.rem-stats b {
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.rem-stats span {
+  font-size: 12px;
+  color: #7f9cc0;
+}
+
+/* 覆盖 */
+.cov {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: calc(100% - 32px);
+}
+.cov-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cov-row.off {
+  opacity: 0.45;
+}
+.cov-m {
+  width: 34px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #22d3ee;
+}
+.cov-n {
+  width: 76px;
+  font-size: 13px;
+  color: #a9c6e6;
+}
+.cov-track {
+  flex: 1;
+  height: 12px;
+  background: rgba(20, 40, 70, 0.6);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cov-bar {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #165dff, #22d3ee);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+  transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cov-h {
+  width: 52px;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+  color: #cfe0f5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 事件 */
+.evt-panel {
+  flex: 1.1;
+}
+.evt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.evt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  padding: 8px 10px;
+  background: rgba(255, 91, 82, 0.06);
+  border-left: 3px solid #ff5b52;
+  border-radius: 6px;
+}
+.evt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5b52;
+  box-shadow: 0 0 8px #ff5b52;
+  flex-shrink: 0;
+}
+.evt-name {
+  flex: 1;
+  color: #dbe8f7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.evt-t {
+  font-size: 12px;
+  color: #7f9cc0;
+  font-variant-numeric: tabular-nums;
+}
+.empty-evt {
+  justify-content: center;
+  color: #4d8a6a;
+  background: rgba(63, 208, 138, 0.06);
+  border-left-color: #3fd08a;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes dash {
+  to { stroke-dashoffset: -24; }
+}
+@keyframes ring {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+</style>
