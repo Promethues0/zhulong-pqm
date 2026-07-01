@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { dashboardApi, scoreApi, remediationApi, monitorApi, coverageApi, trendApi } from '@/api'
+import { dashboardApi, scoreApi, remediationApi, monitorApi, coverageApi, trendApi, deviceApi } from '@/api'
 import type {
   Dashboard,
   ScoreSummary,
@@ -9,6 +9,8 @@ import type {
   MonitorDashboard,
   Coverage,
   TrendResp,
+  RemediationTask,
+  Device,
 } from '@/api/types'
 
 const router = useRouter()
@@ -20,16 +22,20 @@ const rem = ref<RemediationSummary | null>(null)
 const mon = ref<MonitorDashboard | null>(null)
 const cov = ref<Coverage | null>(null)
 const trend = ref<TrendResp | null>(null)
+const remList = ref<RemediationTask[]>([])
+const devices = ref<Device[]>([])
 const updatedAt = ref('')
 
 async function fetchAll() {
-  const [d, s, r, m, c, t] = await Promise.allSettled([
+  const [d, s, r, m, c, t, rl, dv] = await Promise.allSettled([
     dashboardApi.get(),
     scoreApi.summary(),
     remediationApi.summary(),
     monitorApi.dashboard(),
     coverageApi.get(),
     trendApi.get(14),
+    remediationApi.list(),
+    deviceApi.list(),
   ])
   if (d.status === 'fulfilled') dash.value = d.value
   if (s.status === 'fulfilled') score.value = s.value
@@ -37,6 +43,8 @@ async function fetchAll() {
   if (m.status === 'fulfilled') mon.value = m.value
   if (c.status === 'fulfilled') cov.value = c.value
   if (t.status === 'fulfilled') trend.value = t.value
+  if (rl.status === 'fulfilled') remList.value = Array.isArray(rl.value) ? rl.value : []
+  if (dv.status === 'fulfilled') devices.value = Array.isArray(dv.value) ? dv.value : []
   updatedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
   animateHeadline()
 }
@@ -56,17 +64,19 @@ function fit() {
 
 // ---- 数字滚动 ----
 const disp = reactive({ total: 0, p1: 0, hndl: 0, avg: 0, gov: 0 })
+// 每个 key 只保留最新的 rAF id，卸载时统一取消，避免动画泄漏。
+const rafByKey: Partial<Record<keyof typeof disp, number>> = {}
 function tween(key: keyof typeof disp, to: number, dur = 1100) {
   const from = disp[key]
   const t0 = performance.now()
-  function step(t: number) {
+  const step = (t: number) => {
     const k = Math.min(1, (t - t0) / dur)
     const e = 1 - Math.pow(1 - k, 3) // easeOutCubic
     disp[key] = from + (to - from) * e
-    if (k < 1) requestAnimationFrame(step)
+    if (k < 1) rafByKey[key] = requestAnimationFrame(step)
     else disp[key] = to
   }
-  requestAnimationFrame(step)
+  rafByKey[key] = requestAnimationFrame(step)
 }
 function animateHeadline() {
   tween('total', dash.value?.totalAssets ?? 0)
@@ -85,7 +95,7 @@ const govParts = computed(() => {
   const remTotal = rem.value?.total ?? 0
   const assess = total ? scored / total : 0 // 评估覆盖
   const remed = remTotal ? done / remTotal : total ? done / total : 0 // 改造完成
-  const health = total ? 1 - p1 / total : 1 // 低危占比
+  const health = total ? Math.max(0, 1 - p1 / total) : 0 // 低危占比（无资产=0，与其它分量一致，不虚高）
   return { assess, remed, health }
 })
 const govScore = computed(() => {
@@ -256,25 +266,157 @@ const ticker = computed(() => {
     `发现方式覆盖 M1–M7 · 被动流量 M2 已启用`,
   ]
   const evs = events.value.map(
-    (e: any) => `⚠ P1 事件 ${e.assetName || e.title || e.type || ''} ${String(e.createdAt || e.at || '').slice(5, 16)}`,
+    (e: any) => `⚠ P1 事件 ${e.title || e.assetName || e.kind || ''} ${String(e.occurredAt || '').slice(5, 16)}`,
   )
   return [...base, ...evs]
+})
+
+// ==== 多屏轮播 ====
+const SCREENS = [
+  { key: 'overview', name: '治理总览' },
+  { key: 'remediation', name: '改造专题' },
+  { key: 'monitor', name: '监测专题' },
+]
+const screenIdx = ref(0)
+const paused = ref(false)
+const ROTATE_MS = 16000
+let rotateElapsed = 0
+const rotatePct = ref(0)
+function go(i: number) {
+  screenIdx.value = (i + SCREENS.length) % SCREENS.length
+  rotateElapsed = 0
+  rotatePct.value = 0
+}
+
+// ---- 改造专题 ----
+const remBreakdown = computed(() => {
+  const r = rem.value
+  const items = [
+    { label: '已完成', v: r?.done ?? 0, c: '#3fd08a' },
+    { label: '执行中', v: r?.running ?? 0, c: '#22d3ee' },
+    { label: '待执行', v: r?.planned ?? 0, c: '#f2c14e' },
+    { label: '失败', v: r?.failed ?? 0, c: '#ff5b52' },
+  ]
+  const max = Math.max(1, ...items.map((i) => i.v))
+  return items.map((i) => ({ ...i, pct: Math.round((i.v / max) * 100) }))
+})
+const remTasks = computed(() =>
+  [...remList.value]
+    .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+    .slice(0, 7)
+    .map((t) => ({
+      name: t.assetName || t.trackName || `工单 #${t.id}`,
+      track: t.trackName || t.track || '',
+      target: t.targetAlgo || '',
+      status: t.status,
+      progress: Math.max(0, Math.min(100, t.progress ?? 0)),
+    })),
+)
+const remStatusMeta: Record<string, { t: string; c: string }> = {
+  done: { t: '完成', c: '#3fd08a' },
+  running: { t: '执行中', c: '#22d3ee' },
+  planned: { t: '待执行', c: '#f2c14e' },
+  failed: { t: '失败', c: '#ff5b52' },
+}
+const deviceRows = computed(() =>
+  devices.value.slice(0, 6).map((d) => ({
+    name: d.name,
+    type: d.type,
+    online: d.status === 'online',
+    latency: d.latencyMs ?? 0,
+  })),
+)
+const remKpis = computed(() => {
+  const r = rem.value
+  const online = devices.value.filter((d) => d.status === 'online').length
+  return [
+    { v: String(r?.total ?? 0), l: '改造工单', c: '#7fd6ff' },
+    { v: remRing.value.pct + '%', l: '完成率', c: '#3fd08a' },
+    { v: String(r?.running ?? 0), l: '执行中', c: '#22d3ee' },
+    { v: `${online}/${devices.value.length}`, l: '在线设备', c: online ? '#3fd08a' : '#ffb454' },
+  ]
+})
+
+// ---- 监测专题 ----
+const sloRows = computed(() =>
+  (mon.value?.sloSummary ?? []).slice(0, 8).map((s: any) => {
+    const th = Math.max(1, s.threshold ?? 1) // 阈值缺失/为 0 时保底，避免除零→Infinity
+    const ratio = Math.max(0, Math.min(1.3, (s.value ?? 0) / th))
+    return {
+      code: s.code,
+      name: s.name || s.code,
+      value: s.value ?? 0,
+      unit: s.unit || '',
+      breached: !!s.breached,
+      pct: Math.round(Math.min(1, ratio) * 100),
+    }
+  }),
+)
+const certRows = computed(() =>
+  (mon.value?.certExpiring ?? [])
+    .slice()
+    .sort((a: any, b: any) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0))
+    .slice(0, 6)
+    .map((c: any) => ({
+      name: c.name,
+      kind: c.certKind || '',
+      days: c.daysLeft ?? 0,
+      noOta: !!c.noOta,
+      c: (c.daysLeft ?? 0) <= 7 ? '#ff5b52' : (c.daysLeft ?? 0) <= 30 ? '#ffb454' : '#3fd08a',
+    })),
+)
+const p1EventRows = computed(() =>
+  (mon.value?.recentP1Events ?? []).slice(0, 6).map((e: any) => ({
+    title: e.title || e.assetName || e.kind || 'P1 事件',
+    slo: e.ruleSlo || '',
+    at: String(e.occurredAt || e.createdAt || '').slice(5, 16),
+    sev: e.severity || 'p1',
+  })),
+)
+const riskRows = computed(() =>
+  (mon.value?.alwaysOnRisks ?? []).slice(0, 5).map((r: any) => ({
+    code: r.code,
+    desc: r.description || '',
+    level: r.level || '',
+    status: r.status || '',
+    c: r.level === '高' ? '#ff5b52' : r.level === '中' ? '#ffb454' : '#3fd08a',
+  })),
+)
+const monKpis = computed(() => {
+  const slo = mon.value?.sloSummary ?? []
+  const breached = slo.filter((s: any) => s.breached).length
+  return [
+    { v: slo.length ? String(slo.length - breached) : '—', l: 'SLO 达标', c: slo.length ? '#3fd08a' : '#4d6a92' },
+    { v: String(breached), l: 'SLO 越界', c: breached ? '#ff5b52' : '#3fd08a' },
+    { v: String((mon.value?.certExpiring ?? []).length), l: '证书临期', c: '#ffb454' },
+    { v: String((mon.value?.alwaysOnRisks ?? []).length), l: '常态化风险', c: '#7fd6ff' },
+  ]
 })
 
 // ---- 生命周期 ----
 let clockTimer: number | undefined
 let dataTimer: number | undefined
+let rotateTimer: number | undefined
 onMounted(() => {
   fit()
   window.addEventListener('resize', fit)
   clockTimer = window.setInterval(() => (now.value = new Date()), 1000)
   dataTimer = window.setInterval(fetchAll, 30000)
+  // 轮播进度 + 到点切屏（悬停暂停）。
+  rotateTimer = window.setInterval(() => {
+    if (paused.value) return
+    rotateElapsed += 200
+    rotatePct.value = Math.min(100, (rotateElapsed / ROTATE_MS) * 100)
+    if (rotateElapsed >= ROTATE_MS) go(screenIdx.value + 1)
+  }, 200)
   fetchAll()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fit)
   if (clockTimer) clearInterval(clockTimer)
   if (dataTimer) clearInterval(dataTimer)
+  if (rotateTimer) clearInterval(rotateTimer)
+  Object.values(rafByKey).forEach((id) => id && cancelAnimationFrame(id))
 })
 
 function exit() {
@@ -302,10 +444,10 @@ function fmtInt(v: number) {
       <header class="hd">
         <div class="hd-left">
           <div class="logo">烛</div>
-          <div>
-            <div class="hd-title">烛龙 PQM · 后量子迁移治理巩固大屏</div>
-            <div class="hd-sub">ZHULONG POST-QUANTUM MIGRATION GOVERNANCE COMMAND CENTER</div>
-          </div>
+        </div>
+        <div class="hd-center">
+          <div class="hd-title">后量子迁移治理巩固监测</div>
+          <div class="hd-sub">ZHULONG POST-QUANTUM MIGRATION GOVERNANCE &amp; MONITORING</div>
         </div>
         <div class="hd-right">
           <div class="clock">
@@ -313,6 +455,18 @@ function fmtInt(v: number) {
             <div class="cd">{{ clockDate }}</div>
           </div>
           <div class="live"><span class="dot"></span>实时 · {{ updatedAt || '—' }}</div>
+          <div class="scr-nav">
+            <div
+              v-for="(s, i) in SCREENS"
+              :key="s.key"
+              class="scr-dot"
+              :class="{ on: screenIdx === i }"
+              @click="go(i)"
+            >
+              {{ s.name }}
+              <div v-if="screenIdx === i" class="scr-prog" :style="{ width: rotatePct + '%' }"></div>
+            </div>
+          </div>
           <div class="hd-btns">
             <button class="ghost" @click="toggleFullscreen">全屏</button>
             <button class="ghost" @click="exit">返回</button>
@@ -320,8 +474,11 @@ function fmtInt(v: number) {
         </div>
       </header>
 
-      <!-- 主体三栏 -->
-      <main class="grid">
+      <!-- 多屏舞台 -->
+      <div class="stage" @mouseenter="paused = true" @mouseleave="paused = false">
+      <!-- ① 治理总览 -->
+      <section class="screen" :class="{ active: screenIdx === 0 }">
+      <div class="grid">
         <!-- 左列 -->
         <section class="col">
           <div class="panel">
@@ -402,12 +559,7 @@ function fmtInt(v: number) {
           <div class="panel pipe-panel">
             <div class="p-title">五阶段治理闭环</div>
             <svg viewBox="0 0 760 190" class="pipe">
-              <path
-                d="M 90 70 H 670"
-                fill="none"
-                stroke="#1c3050"
-                stroke-width="3"
-              />
+              <path id="pipeMain" d="M 90 70 H 670" fill="none" stroke="#1c3050" stroke-width="3" />
               <path
                 d="M 90 70 H 670"
                 fill="none"
@@ -416,6 +568,12 @@ function fmtInt(v: number) {
                 stroke-dasharray="10 14"
                 class="flow"
               />
+              <!-- 数据流入粒子 -->
+              <circle v-for="n in 6" :key="'pm' + n" r="3.6" class="particle">
+                <animateMotion dur="2.6s" repeatCount="indefinite" :begin="n * 0.42 + 's'">
+                  <mpath href="#pipeMain" xlink:href="#pipeMain" />
+                </animateMotion>
+              </circle>
               <!-- 回环 -->
               <path
                 d="M 670 70 C 720 70 720 150 380 150 C 40 150 40 70 90 70"
@@ -507,14 +665,193 @@ function fmtInt(v: number) {
             <div class="evt-list">
               <div v-for="(e, i) in events" :key="i" class="evt">
                 <span class="evt-dot"></span>
-                <span class="evt-name">{{ (e as any).assetName || (e as any).title || (e as any).type || 'P1 事件' }}</span>
-                <span class="evt-t">{{ String((e as any).createdAt || (e as any).at || '').slice(5, 16) }}</span>
+                <span class="evt-name">{{ (e as any).title || (e as any).assetName || (e as any).kind || 'P1 事件' }}</span>
+                <span class="evt-t">{{ String((e as any).occurredAt || '').slice(5, 16) }}</span>
               </div>
               <div v-if="!events.length" class="evt empty-evt">暂无 P1 事件 · 监测态势平稳</div>
             </div>
           </div>
         </section>
-      </main>
+      </div>
+      </section>
+
+      <!-- ② 改造专题 -->
+      <section class="screen" :class="{ active: screenIdx === 1 }">
+        <div class="grid">
+          <section class="col">
+            <div class="panel">
+              <div class="p-title">改造态势</div>
+              <div class="kpis">
+                <div v-for="(k, i) in remKpis" :key="i" class="kpi">
+                  <div class="kv" :style="{ color: k.c }">{{ k.v }}</div>
+                  <div class="kl">{{ k.l }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="p-title">改造完成度</div>
+              <div class="bigring-wrap">
+                <svg viewBox="0 0 200 200" class="big-ring">
+                  <circle cx="100" cy="100" r="82" fill="none" stroke="#12203a" stroke-width="16" />
+                  <circle
+                    cx="100" cy="100" r="82" fill="none" stroke="#3fd08a" stroke-width="16" stroke-linecap="round"
+                    :stroke-dasharray="`${(2 * Math.PI * 82 * remRing.pct) / 100} ${2 * Math.PI * 82}`"
+                    transform="rotate(-90 100 100)" class="rem-arc"
+                  />
+                  <text x="100" y="94" text-anchor="middle" class="bigring-pct">{{ remRing.pct }}%</text>
+                  <text x="100" y="120" text-anchor="middle" class="bigring-sub">{{ remRing.done }} / {{ remRing.total }} 工单</text>
+                </svg>
+              </div>
+            </div>
+          </section>
+
+          <section class="col center">
+            <div class="panel" style="flex: 1">
+              <div class="p-title">改造工单流 · 最近编排</div>
+              <div class="task-list">
+                <div v-for="(t, i) in remTasks" :key="i" class="task-row">
+                  <div class="task-top">
+                    <span class="task-name">{{ t.name }}</span>
+                    <span class="task-status" :style="{ color: (remStatusMeta[t.status] || {}).c || '#9fdcf0' }">
+                      {{ (remStatusMeta[t.status] || { t: '未知' }).t }} · {{ t.progress }}%
+                    </span>
+                  </div>
+                  <div class="task-meta">{{ t.track }}<span v-if="t.target"> → {{ t.target }}</span></div>
+                  <div class="task-track">
+                    <div
+                      class="task-bar flow-bar"
+                      :style="{ width: t.progress + '%', background: (remStatusMeta[t.status] || { c: '#22d3ee' }).c }"
+                    ></div>
+                  </div>
+                </div>
+                <div v-if="!remTasks.length" class="list-empty">暂无改造工单 · 前往「改造编排」发起</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="col">
+            <div class="panel">
+              <div class="p-title">工单状态分布</div>
+              <div class="funnel">
+                <div v-for="b in remBreakdown" :key="b.label" class="fn-row">
+                  <span class="fn-lab">{{ b.label }}</span>
+                  <div class="fn-track">
+                    <div class="fn-bar flow-bar" :style="{ width: b.pct + '%', background: b.c, boxShadow: `0 0 12px ${b.c}88` }"></div>
+                  </div>
+                  <span class="fn-num" :style="{ color: b.c }">{{ b.v }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="p-title">执行设备</div>
+              <div class="dev-list">
+                <div v-for="(d, i) in deviceRows" :key="i" class="dev-row">
+                  <span class="dev-dot" :class="{ on: d.online }"></span>
+                  <span class="dev-name">{{ d.name }}</span>
+                  <span class="dev-type">{{ d.type }}</span>
+                  <span class="dev-lat" :style="{ color: d.online ? '#3fd08a' : '#7f9cc0' }">
+                    {{ d.online ? d.latency + 'ms' : '离线' }}
+                  </span>
+                </div>
+                <div v-if="!deviceRows.length" class="list-empty">暂无编排设备</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ③ 监测专题 -->
+      <section class="screen" :class="{ active: screenIdx === 2 }">
+        <div class="grid">
+          <section class="col">
+            <div class="panel">
+              <div class="p-title">监测态势</div>
+              <div class="kpis">
+                <div v-for="(k, i) in monKpis" :key="i" class="kpi">
+                  <div class="kv" :style="{ color: k.c }">{{ k.v }}</div>
+                  <div class="kl">{{ k.l }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="panel" style="flex: 1.4">
+              <div class="p-title">SLO 指标达成</div>
+              <div class="funnel">
+                <div v-for="s in sloRows" :key="s.code" class="fn-row">
+                  <span class="fn-lab sm">{{ s.name }}</span>
+                  <div class="fn-track">
+                    <div
+                      class="fn-bar flow-bar"
+                      :style="{ width: s.pct + '%', background: s.breached ? '#ff5b52' : '#22d3ee' }"
+                    ></div>
+                  </div>
+                  <span class="fn-num sm" :style="{ color: s.breached ? '#ff5b52' : '#7fd6ff' }">
+                    {{ s.value }}{{ s.unit === 'pct' || s.unit === 'pct_cov' ? '%' : s.unit === 'ms' ? 'ms' : '' }}
+                  </span>
+                </div>
+                <div v-if="!sloRows.length" class="list-empty">SLO 指标待接入</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="col center">
+            <div class="panel" style="flex: 1.2">
+              <div class="p-title">近期 P1 监测事件</div>
+              <div class="evt-list">
+                <div v-for="(e, i) in p1EventRows" :key="i" class="evt">
+                  <span class="evt-dot"></span>
+                  <span class="evt-name">{{ e.title }}</span>
+                  <span class="evt-t">{{ e.slo }} · {{ e.at }}</span>
+                </div>
+                <div v-if="!p1EventRows.length" class="evt empty-evt">暂无 P1 事件 · 监测态势平稳</div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="p-title">常态化风险台账</div>
+              <div class="risk-list">
+                <div v-for="(r, i) in riskRows" :key="i" class="risk-row">
+                  <span class="risk-lvl" :style="{ color: r.c, borderColor: r.c }">{{ r.level }}</span>
+                  <span class="risk-desc">{{ r.code }} · {{ r.desc }}</span>
+                  <span class="risk-st">{{ r.status }}</span>
+                </div>
+                <div v-if="!riskRows.length" class="list-empty">无常态化风险</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="col">
+            <div class="panel" style="flex: 1.3">
+              <div class="p-title">证书到期预警</div>
+              <div class="cert-list">
+                <div v-for="(c, i) in certRows" :key="i" class="cert-row">
+                  <span class="cert-days" :style="{ color: c.c, borderColor: c.c }">{{ c.days }}天</span>
+                  <span class="cert-name">{{ c.name }}</span>
+                  <span class="cert-kind">{{ c.kind }}</span>
+                  <span v-if="c.noOta" class="cert-ota">无OTA</span>
+                </div>
+                <div v-if="!certRows.length" class="list-empty">近 90 日无证书临期</div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="p-title">CBOM 与合规</div>
+              <div class="compliance">
+                <div class="cmp-cell">
+                  <div class="cmp-v" style="color: #3fd08a">{{ cbomFresh }}</div>
+                  <div class="cmp-l">CBOM 新鲜度</div>
+                </div>
+                <div class="cmp-cell">
+                  <div class="cmp-v" style="color: #7fd6ff">{{ (mon?.reassessQueue || []).length }}</div>
+                  <div class="cmp-l">待复评</div>
+                </div>
+                <div class="cmp-cell">
+                  <div class="cmp-v" style="color: #22d3ee">{{ govScore }}</div>
+                  <div class="cmp-l">治理巩固度</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+      </div>
 
       <!-- 底部：统计条 + 跑马灯 -->
       <footer class="btm">
@@ -603,6 +940,18 @@ function fmtInt(v: number) {
   align-items: center;
   gap: 16px;
 }
+.hd-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
 .logo {
   width: 54px;
   height: 54px;
@@ -684,13 +1033,30 @@ function fmtInt(v: number) {
 }
 
 /* 栅格 */
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 16px;
+}
+.screen {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateX(46px) scale(0.99);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.screen.active {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
 .grid {
   display: grid;
   grid-template-columns: 1fr 1.35fr 1fr;
   gap: 20px;
-  flex: 1;
-  min-height: 0;
-  margin-bottom: 16px;
+  height: 100%;
 }
 .col {
   display: flex;
@@ -1279,5 +1645,313 @@ function fmtInt(v: number) {
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+/* 管线数据粒子 */
+.particle {
+  fill: #9df0ff;
+  filter: drop-shadow(0 0 5px #22d3ee);
+}
+
+/* 进度条流光 */
+.flow-bar {
+  position: relative;
+  overflow: hidden;
+}
+.flow-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: translateX(-120%);
+  animation: streak 2.4s linear infinite;
+  will-change: transform;
+}
+@keyframes streak {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(340%); }
+}
+.flow,
+.flow-rev,
+.ticker-track,
+.bg-stars {
+  will-change: transform;
+}
+/* 尊重系统「减少动态」偏好：关掉常驻氛围动画 */
+@media (prefers-reduced-motion: reduce) {
+  .scanline,
+  .bg-stars,
+  .particle,
+  .flow,
+  .flow-rev,
+  .ticker-track,
+  .flow-bar::after,
+  .node-pulse,
+  .chip-glyph,
+  .tl-dot,
+  .live .dot {
+    animation: none !important;
+  }
+}
+
+/* 轮播导航 */
+.scr-nav {
+  display: flex;
+  gap: 8px;
+}
+.scr-dot {
+  position: relative;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #7f9cc0;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: rgba(20, 40, 70, 0.4);
+  overflow: hidden;
+  transition: color 0.3s, background 0.3s, border-color 0.3s;
+}
+.scr-dot.on {
+  color: #bfe4ff;
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.12);
+}
+.scr-prog {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: #22d3ee;
+  box-shadow: 0 0 6px #22d3ee;
+}
+
+/* 改造完成度大环 */
+.bigring-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100% - 32px);
+}
+.big-ring {
+  width: 200px;
+  height: 200px;
+}
+.bigring-pct {
+  font-size: 44px;
+  font-weight: 800;
+  fill: #eaf4ff;
+  font-variant-numeric: tabular-nums;
+}
+.bigring-sub {
+  font-size: 14px;
+  fill: #7f9cc0;
+}
+
+/* 工单流 */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  height: calc(100% - 32px);
+  overflow: hidden;
+}
+.task-row {
+  background: rgba(20, 40, 70, 0.35);
+  border: 1px solid rgba(56, 116, 190, 0.22);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.task-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.task-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #dbe8f7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-status {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+.task-meta {
+  font-size: 12px;
+  color: #7f9cc0;
+  margin: 4px 0 8px;
+}
+.task-track {
+  height: 8px;
+  background: rgba(20, 40, 70, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.task-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 设备列表 */
+.dev-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: calc(100% - 32px);
+}
+.dev-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.dev-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6f90b8;
+  flex-shrink: 0;
+}
+.dev-dot.on {
+  background: #3fd08a;
+  box-shadow: 0 0 8px #3fd08a;
+}
+.dev-name {
+  flex: 1;
+  color: #cfe0f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dev-type {
+  font-size: 12px;
+  color: #7f9cc0;
+}
+.dev-lat {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  width: 54px;
+  text-align: right;
+}
+
+/* 证书到期 */
+.cert-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  height: calc(100% - 32px);
+}
+.cert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.cert-days {
+  width: 56px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid;
+  border-radius: 6px;
+  padding: 2px 0;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.cert-name {
+  flex: 1;
+  color: #cfe0f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cert-kind {
+  font-size: 12px;
+  color: #7f9cc0;
+}
+.cert-ota {
+  font-size: 11px;
+  color: #ff9f45;
+  border: 1px solid rgba(255, 159, 69, 0.4);
+  border-radius: 8px;
+  padding: 1px 7px;
+}
+
+/* 风险台账 */
+.risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: calc(100% - 32px);
+}
+.risk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.risk-lvl {
+  width: 34px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid;
+  border-radius: 6px;
+  padding: 1px 0;
+  flex-shrink: 0;
+}
+.risk-desc {
+  flex: 1;
+  color: #cfe0f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.risk-st {
+  font-size: 12px;
+  color: #7f9cc0;
+}
+
+/* 合规 */
+.compliance {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: calc(100% - 32px);
+}
+.cmp-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.cmp-v {
+  font-size: 34px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cmp-l {
+  font-size: 13px;
+  color: #8fb0d6;
+}
+
+.list-empty {
+  color: #4d6a92;
+  font-size: 14px;
+  text-align: center;
+  padding: 22px 0;
+}
+.fn-num.sm {
+  font-size: 15px;
+  width: 58px;
 }
 </style>
