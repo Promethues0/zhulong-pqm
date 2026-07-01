@@ -38,6 +38,7 @@ const maxConcurrency = 16
 type Runner struct {
 	db      *gorm.DB
 	scanner Scanner
+	retry   RetryPolicy // 瞬态失败退避重试（超时/重置），确定性失败不重试
 }
 
 // NewRunner 构造扫描执行器。scanner 可注入以便测试替换。
@@ -45,12 +46,12 @@ func NewRunner(db *gorm.DB, scanner Scanner) *Runner {
 	if scanner == nil {
 		scanner = NewTLSScanner()
 	}
-	return &Runner{db: db, scanner: scanner}
+	return &Runner{db: db, scanner: scanner, retry: defaultRetryPolicy()}
 }
 
 // NewRunnerForJob 据 job.ScannerType 装配扫描器构造执行器（①发现深化）。
 func NewRunnerForJob(db *gorm.DB, scannerType string) *Runner {
-	return &Runner{db: db, scanner: NewScanner(scannerType)}
+	return &Runner{db: db, scanner: NewScanner(scannerType), retry: defaultRetryPolicy()}
 }
 
 // Run 同步执行一个扫描任务（通常由调用方放入 goroutine）。
@@ -94,7 +95,7 @@ func (r *Runner) Run(ctx context.Context, jobID uint) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			res, err := r.scanner.Scan(ctx, t.Host, t.Port)
+			res, err := scanWithRetry(ctx, r.scanner, t.Host, t.Port, r.retry)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {

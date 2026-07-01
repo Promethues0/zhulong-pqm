@@ -22,8 +22,8 @@ func certSHA256(cert *x509.Certificate) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// dialTimeout 单次握手的超时时间。
-const dialTimeout = 5 * time.Second
+// dialTimeout 单次握手的超时时间（ZPQM_SCAN_TIMEOUT_MS，默认 5000ms）。
+var dialTimeout = time.Duration(scanEnvInt("ZPQM_SCAN_TIMEOUT_MS", 5000)) * time.Millisecond
 
 // TLSScanner 通过完成 TLS 握手来探测目标端点的密码学特征。
 //
