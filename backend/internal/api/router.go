@@ -97,6 +97,7 @@ func (s *Server) Router() *gin.Engine {
 
 		auth.GET("/scans", s.listScans)
 		auth.GET("/scans/:id", s.getScan)
+		auth.GET("/scans/:id/export", s.exportScan) // 扫描结果 CSV 批量导出
 
 		auth.GET("/score/summary", s.scoreSummary)
 		auth.GET("/score/presets", s.scorePresets)

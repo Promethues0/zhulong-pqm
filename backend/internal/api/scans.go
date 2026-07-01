@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -132,4 +134,53 @@ func (s *Server) getScan(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"job": job, "results": results})
+}
+
+// exportScan GET /scans/:id/export → 该扫描任务全部探测结果的 CSV
+// （带 UTF-8 BOM，Excel 友好；含命中规则、失败原因，供分析/合规批量导出）。
+func (s *Server) exportScan(c *gin.Context) {
+	var job model.ScanJob
+	if err := s.db.First(&job, c.Param("id")).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "任务不存在"})
+		return
+	}
+	var results []model.ScanResult
+	s.db.Where("scan_job_id = ?", job.ID).Order("id asc").Find(&results)
+
+	var b strings.Builder
+	b.WriteString("\xEF\xBB\xBF") // UTF-8 BOM
+	header := []string{"主机", "端口", "状态", "发现方式", "TLS版本", "密码套件", "密钥算法", "密钥位数", "签名算法", "证书主体", "证书指纹", "证书到期", "命中规则", "失败原因"}
+	b.WriteString(strings.Join(header, ",") + "\n")
+
+	for i := range results {
+		r := &results[i]
+		var hits []model.RuleHit
+		s.db.Where("scan_result_id = ?", r.ID).Order("rule_id asc").Find(&hits)
+		ruleIDs := make([]string, 0, len(hits))
+		for _, h := range hits {
+			ruleIDs = append(ruleIDs, h.RuleID)
+		}
+		notAfter := ""
+		if r.CertNotAfter != nil {
+			notAfter = r.CertNotAfter.Format("2006-01-02")
+		}
+		cells := []string{
+			r.Host, fmt.Sprintf("%d", r.Port), r.Status, r.Method, r.TLSVersion, r.CipherSuite,
+			r.KeyAlgo, fmt.Sprintf("%d", r.KeySize), r.SigAlgo, r.CertSubject, r.CertFingerprint,
+			notAfter, strings.Join(ruleIDs, "|"), r.Error,
+		}
+		for j, cell := range cells {
+			if j > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteString(csvCell(cell))
+		}
+		b.WriteByte('\n')
+	}
+
+	s.audit(c, "scan", "scan.export", auditTarget("ScanJob", job.ID, job.Name), model.AuditSuccess,
+		fmt.Sprintf("导出结果=%d", len(results)))
+	filename := fmt.Sprintf("scan-%d-%s.csv", job.ID, time.Now().Format("20060102-150405"))
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", []byte(b.String()))
 }

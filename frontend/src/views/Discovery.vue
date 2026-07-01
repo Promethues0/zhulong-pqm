@@ -9,6 +9,7 @@ import {
   IconStorage,
   IconImport,
   IconBook,
+  IconDownload,
 } from '@arco-design/web-vue/es/icon'
 import { scanApi, importApi } from '@/api'
 import type { ImportResult, ScanJob, ScanResult } from '@/api/types'
@@ -294,6 +295,24 @@ async function openResults(job: ScanJob) {
   }
 }
 
+/** 导出该扫描任务全部结果为 CSV（浏览器下载，Excel 友好带 BOM）。 */
+async function exportScan(job: ScanJob) {
+  try {
+    const blob = await scanApi.exportCsv(job.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `scan-${job.id}-${job.name || 'results'}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    Message.success('扫描结果 CSV 已导出')
+  } catch {
+    Message.error('导出失败')
+  }
+}
+
 onMounted(loadJobs)
 onBeforeUnmount(() => {
   if (pollTimer) window.clearTimeout(pollTimer)
@@ -513,6 +532,15 @@ onBeforeUnmount(() => {
               >
                 <template #icon><IconEye /></template>
                 结果
+              </a-button>
+              <a-button
+                size="mini"
+                type="text"
+                :disabled="record.status === 'pending' || record.status === 'running'"
+                @click="exportScan(record)"
+              >
+                <template #icon><IconDownload /></template>
+                CSV
               </a-button>
             </template>
             <template #empty>

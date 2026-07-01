@@ -221,6 +221,10 @@ export const scanApi = {
   get(id: number) {
     return client.get<ScanDetail>(`/scans/${id}`).then((r) => r.data)
   },
+  /** 导出该扫描任务全部结果为 CSV，返回 Blob。 */
+  exportCsv(id: number) {
+    return client.get(`/scans/${id}/export`, { responseType: 'blob' }).then((r) => r.data as Blob)
+  },
 }
 
 /** 评分元数据与汇总 */
