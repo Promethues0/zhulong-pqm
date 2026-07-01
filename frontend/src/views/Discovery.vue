@@ -148,7 +148,7 @@ async function onPcapFile(file: File) {
     await loadJobs()
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    Message.error(msg || 'pcap 解析失败（仅支持 classic .pcap）')
+    Message.error(msg || '抓包解析失败')
   } finally {
     importing.value = false
   }
@@ -444,21 +444,21 @@ onBeforeUnmount(() => {
                   <a-upload
                     :auto-upload="false"
                     :show-file-list="false"
-                    accept=".pcap,.cap"
+                    accept=".pcap,.pcapng,.cap"
                     :custom-request="noopRequest"
                     @change="(_: unknown, f: any) => f?.file && onPcapFile(f.file)"
                   >
                     <template #upload-button>
                       <a-button type="primary" :loading="importing">
                         <template #icon><IconImport /></template>
-                        上传 .pcap 抓包
+                        上传抓包 (.pcap/.pcapng)
                       </a-button>
                     </template>
                   </a-upload>
                 </a-space>
                 <div class="field-hint">
                   旁路镜像 / tcpdump 抓包 → 解析 TLS 握手（SNI·版本·套件·证书）→ 按服务端点建档（M2）。
-                  仅 classic .pcap（pcapng 请另存为 pcap）。
+                  支持 .pcap 与 .pcapng，跨 TCP 段的大握手/证书链自动重组。
                 </div>
               </a-form>
             </a-tab-pane>

@@ -28,39 +28,76 @@ type tlsHandshake struct {
 	certSubject   string   // 叶证书 CN
 }
 
-// parseTLSPayload 尝试把一段 TCP 载荷解析为单条 TLS 握手记录。
-// 只解析首个握手记录（ClientHello/ServerHello/Certificate 通常在流首段）；无法解析返回 nil。
-func parseTLSPayload(p []byte) *tlsHandshake {
-	// TLS 记录头：type(1) ver(2) len(2)。type=22 为 handshake。
-	if len(p) < 9 || p[0] != 0x16 || p[1] != 0x03 {
-		return nil
+// hsMsg 一条握手消息（类型 + 体，体已跨 TLS 记录/TCP 段拼接完整）。
+type hsMsg struct {
+	typ  byte
+	body []byte
+}
+
+// handshakeMessages 从【已重组的 TCP 定向字节流】里抽取握手消息。
+//
+// 两步：① 把所有 handshake(type=22) TLS 记录的分片拼成握手字节流——这样跨 TLS 记录、
+// 跨 TCP 段的 ClientHello / 大证书链都能被完整还原；② 按握手消息头(type+3字节长度)切分。
+func handshakeMessages(stream []byte) []hsMsg {
+	// ① 拼接所有 handshake 记录负载。
+	var hsBuf []byte
+	i := 0
+	for i+5 <= len(stream) {
+		ctype := stream[i]
+		if stream[i+1] != 0x03 && stream[i+1] != 0x01 { // 非 TLS/TLCP 记录版本 → 非握手数据，停
+			break
+		}
+		recLen := int(stream[i+3])<<8 | int(stream[i+4])
+		if recLen <= 0 {
+			break
+		}
+		start := i + 5
+		end := start + recLen
+		if end > len(stream) {
+			end = len(stream) // 截断：取可见部分
+		}
+		if ctype == 0x16 { // handshake
+			hsBuf = append(hsBuf, stream[start:end]...)
+		} else if ctype != 0x14 { // 非 handshake/非 CCS(0x14)：握手已结束（AppData/Alert），停
+			break
+		}
+		i = end
 	}
-	recLen := int(p[3])<<8 | int(p[4])
-	body := p[5:]
-	if recLen < len(body) {
-		body = body[:recLen] // 记录可能只截到本段，按可见部分尽力解析
+	// ② 切分握手消息。
+	var out []hsMsg
+	j := 0
+	for j+4 <= len(hsBuf) {
+		typ := hsBuf[j]
+		mlen := int(hsBuf[j+1])<<16 | int(hsBuf[j+2])<<8 | int(hsBuf[j+3])
+		bstart := j + 4
+		bend := bstart + mlen
+		truncated := bend > len(hsBuf)
+		if truncated {
+			bend = len(hsBuf)
+		}
+		out = append(out, hsMsg{typ: typ, body: hsBuf[bstart:bend]})
+		if truncated {
+			break // 最后一条被截断，尽力解析后停止
+		}
+		j = bend
 	}
-	if len(body) < 4 {
-		return nil
-	}
-	hsType := body[0]
-	hsLen := int(body[1])<<16 | int(body[2])<<8 | int(body[3])
-	hs := body[4:]
-	if hsLen < len(hs) {
-		hs = hs[:hsLen]
-	}
-	out := &tlsHandshake{version: tlsRecordVersion(p[1], p[2])}
-	switch hsType {
+	return out
+}
+
+// parseHandshakeMsg 解析一条完整握手消息为观测；非目标类型返回 nil。
+func parseHandshakeMsg(typ byte, body []byte) *tlsHandshake {
+	out := &tlsHandshake{}
+	switch typ {
 	case 0x01:
 		out.isClientHello = true
-		parseHello(hs, out, true)
+		parseHello(body, out, true)
 	case 0x02:
 		out.isServerHello = true
-		parseHello(hs, out, false)
+		parseHello(body, out, false)
 	case 0x0b:
-		parseCertificate(hs, out)
+		parseCertificate(body, out)
 		if out.certAlgo == "" {
-			return nil // Certificate 段但没解出叶证书（多半跨段截断），视为无效
+			return nil // Certificate 但没解出叶证书（截断），视为无效
 		}
 	default:
 		return nil
