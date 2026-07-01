@@ -99,6 +99,10 @@ func (s *Server) createAsset(c *gin.Context) {
 	}
 	s.recompute(&a)
 	if err := s.db.Create(&a).Error; err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint") {
+			c.JSON(http.StatusConflict, gin.H{"error": "该资产锚点（endpoint 或证书指纹）已存在，避免重复录入"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

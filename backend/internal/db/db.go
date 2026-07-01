@@ -62,10 +62,54 @@ func Open(path string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}
 
+	// ② 建档去重（#7）：先幂等去重，再补 CryptoAsset 锚点唯一索引，防重复入库。
+	migrateAssetDedup(gdb)
+
 	if err := seed(gdb); err != nil {
 		return nil, fmt.Errorf("seed: %w", err)
 	}
 	return gdb, nil
+}
+
+// migrateAssetDedup 收敛资产去重锚点并建部分唯一索引（#7 数据完整性）。
+//
+// 锚点与两条 upsert 路径一致：有 endpoint 者以 endpoint 为准（扫描发现），
+// 无 endpoint 但有 cert 者以 cert 指纹为准（PEM/SBOM 导入）；两者皆空的手动资产不去重。
+// 步骤：① 幂等软合并同锚点重复行（保留最小 id，其余置 merged_into+status=merged，
+// 与 ② 建档合并语义一致、数据不删）；② 建【部分】唯一索引（排除空锚点与已合并行，
+// 故手动资产可任意重名、被合并行不冲突）。索引创建失败仅告警不致命，绝不阻断启动。
+func migrateAssetDedup(gdb *gorm.DB) {
+	// ① 软合并：按 endpoint 去重（扫描路径）。
+	if err := gdb.Exec(`
+		UPDATE crypto_assets
+		SET merged_into = (SELECT MIN(a2.id) FROM crypto_assets a2
+		                   WHERE a2.endpoint = crypto_assets.endpoint AND a2.merged_into IS NULL),
+		    status = 'merged'
+		WHERE endpoint != '' AND merged_into IS NULL
+		  AND id > (SELECT MIN(a2.id) FROM crypto_assets a2
+		            WHERE a2.endpoint = crypto_assets.endpoint AND a2.merged_into IS NULL)`).Error; err != nil {
+		log.Printf("db: 资产 endpoint 去重失败: %v", err)
+	}
+	// ① 软合并：无 endpoint 者按 cert 指纹去重（导入路径）。
+	if err := gdb.Exec(`
+		UPDATE crypto_assets
+		SET merged_into = (SELECT MIN(a2.id) FROM crypto_assets a2
+		                   WHERE a2.cert_fingerprint = crypto_assets.cert_fingerprint AND a2.endpoint = '' AND a2.merged_into IS NULL),
+		    status = 'merged'
+		WHERE endpoint = '' AND cert_fingerprint != '' AND merged_into IS NULL
+		  AND id > (SELECT MIN(a2.id) FROM crypto_assets a2
+		            WHERE a2.cert_fingerprint = crypto_assets.cert_fingerprint AND a2.endpoint = '' AND a2.merged_into IS NULL)`).Error; err != nil {
+		log.Printf("db: 资产 cert 指纹去重失败: %v", err)
+	}
+	// ② 部分唯一索引（IF NOT EXISTS 幂等；失败仅告警，不阻断启动）。
+	for _, ddl := range []string{
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_ca_endpoint ON crypto_assets(endpoint) WHERE endpoint != '' AND merged_into IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_ca_certfp ON crypto_assets(cert_fingerprint) WHERE cert_fingerprint != '' AND endpoint = '' AND merged_into IS NULL`,
+	} {
+		if err := gdb.Exec(ddl).Error; err != nil {
+			log.Printf("db: 建资产唯一索引失败（可能仍有残留重复，已跳过不阻断启动）: %v", err)
+		}
+	}
 }
 
 // seed 在空库时植入默认管理员、内置权重方案、示例资产、改造设备与示例工单。
