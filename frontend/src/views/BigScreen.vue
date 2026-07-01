@@ -215,6 +215,52 @@ const trendGeom = computed(() => {
 const events = computed(() => (mon.value?.recentP1Events ?? []).slice(0, 6))
 const certExpiring = computed(() => (mon.value?.certExpiring ?? []).length)
 
+// ---- 仪表末端辉光点（随动画跟随） ----
+const govTip = computed(() => polar(150, 150, 118, GA0 + (270 * disp.gov) / 100))
+
+// CBOM 新鲜度：负数/无快照时显示占位，0 天=今日。
+const cbomFresh = computed(() => {
+  const d = mon.value?.cbomFreshnessDays
+  if (d == null || d < 0) return '—'
+  return d === 0 ? '今日' : d + '天'
+})
+
+// ---- 底部统计条 ----
+const strip = computed(() => {
+  const total = dash.value?.totalAssets ?? 0
+  const slo = mon.value?.sloSummary ?? []
+  const breached = slo.filter((s: any) => s.breached).length
+  const sloRate = slo.length ? Math.round((1 - breached / slo.length) * 100) : 100
+  return [
+    { label: '扫描任务', value: String(dash.value?.scanJobs ?? 0), c: '#7fd6ff' },
+    { label: '改造工单', value: String(rem.value?.total ?? 0), c: '#7fd6ff' },
+    { label: 'CBOM 新鲜度', value: cbomFresh.value, c: '#3fd08a' },
+    { label: '证书临期', value: String(certExpiring.value), c: certExpiring.value ? '#ffb454' : '#3fd08a' },
+    { label: 'HNDL 占比', value: (total ? Math.round(((dash.value?.hndlCount ?? 0) / total) * 100) : 0) + '%', c: '#ff9f45' },
+    { label: 'SLO 达标', value: sloRate + '%', c: sloRate >= 90 ? '#3fd08a' : '#ffb454' },
+  ]
+})
+
+// ---- 底部跑马灯 ----
+const ticker = computed(() => {
+  const t = dash.value
+  const s = score.value
+  const base = [
+    '烛龙 PQM 治理闭环持续巡检 · 系统运行正常',
+    `密码使用点 ${t?.totalAssets ?? 0} 项已纳管`,
+    `P1 极高 ${s?.p1.count ?? 0} 项需立即处置`,
+    `HNDL 重点关注 ${t?.hndlCount ?? 0} 项`,
+    `改造完成率 ${remRing.value.pct}%`,
+    `平均风险分 ${Math.round(t?.avgScore ?? 0)}`,
+    `治理巩固度 ${govScore.value} / 100 · ${govLevel.value.t}`,
+    `发现方式覆盖 M1–M7 · 被动流量 M2 已启用`,
+  ]
+  const evs = events.value.map(
+    (e: any) => `⚠ P1 事件 ${e.assetName || e.title || e.type || ''} ${String(e.createdAt || e.at || '').slice(5, 16)}`,
+  )
+  return [...base, ...evs]
+})
+
 // ---- 生命周期 ----
 let clockTimer: number | undefined
 let dataTimer: number | undefined
@@ -249,6 +295,8 @@ function fmtInt(v: number) {
       <!-- 背景装饰 -->
       <div class="bg-grid"></div>
       <div class="bg-glow"></div>
+      <div class="bg-stars"></div>
+      <div class="scanline"></div>
 
       <!-- 顶栏 -->
       <header class="hd">
@@ -339,6 +387,7 @@ function fmtInt(v: number) {
               </defs>
               <path :d="govArcBg" fill="none" stroke="#12203a" stroke-width="16" stroke-linecap="round" />
               <path :d="govArcVal" fill="none" stroke="url(#gaugeGrad)" stroke-width="16" stroke-linecap="round" class="gauge-val" />
+              <circle :cx="govTip.x" :cy="govTip.y" r="8" :fill="govLevel.c" class="gauge-tip" />
               <text x="150" y="140" text-anchor="middle" class="gauge-num">{{ Math.round(disp.gov) }}</text>
               <text x="150" y="166" text-anchor="middle" class="gauge-unit">/ 100</text>
               <text x="150" y="196" text-anchor="middle" class="gauge-lv" :fill="govLevel.c">{{ govLevel.t }}</text>
@@ -466,6 +515,28 @@ function fmtInt(v: number) {
           </div>
         </section>
       </main>
+
+      <!-- 底部：统计条 + 跑马灯 -->
+      <footer class="btm">
+        <div class="stat-strip">
+          <div v-for="(s, i) in strip" :key="i" class="chip">
+            <span class="chip-glyph"></span>
+            <div class="chip-body">
+              <div class="chip-v" :style="{ color: s.c }">{{ s.value }}</div>
+              <div class="chip-l">{{ s.label }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="ticker">
+          <span class="ticker-live"><span class="tl-dot"></span>LIVE</span>
+          <div class="ticker-mask">
+            <div class="ticker-track">
+              <span v-for="(m, i) in ticker" :key="'a' + i" class="ticker-item">{{ m }}</span>
+              <span v-for="(m, i) in ticker" :key="'b' + i" class="ticker-item">{{ m }}</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -489,6 +560,8 @@ function fmtInt(v: number) {
   font-family: 'Hanken Grotesk', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   padding: 26px 34px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 .bg-grid {
   position: absolute;
@@ -615,7 +688,9 @@ function fmtInt(v: number) {
   display: grid;
   grid-template-columns: 1fr 1.35fr 1fr;
   gap: 20px;
-  height: calc(1080px - 26px - 26px - 18px - 20px - 20px);
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 16px;
 }
 .col {
   display: flex;
@@ -1045,5 +1120,164 @@ function fmtInt(v: number) {
 @keyframes ring {
   0% { opacity: 0.7; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* 星点漂移 */
+.bg-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 22%, rgba(140, 200, 255, 0.7), transparent),
+    radial-gradient(1.2px 1.2px at 32% 68%, rgba(120, 230, 255, 0.55), transparent),
+    radial-gradient(1.6px 1.6px at 58% 18%, rgba(160, 210, 255, 0.6), transparent),
+    radial-gradient(1.1px 1.1px at 74% 52%, rgba(120, 220, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 88% 30%, rgba(150, 205, 255, 0.6), transparent),
+    radial-gradient(1.2px 1.2px at 46% 84%, rgba(120, 220, 255, 0.45), transparent),
+    radial-gradient(1.3px 1.3px at 22% 46%, rgba(140, 200, 255, 0.5), transparent);
+  animation: twinkle 4.5s ease-in-out infinite alternate;
+}
+
+/* 全屏扫描线扫掠 */
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 160px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.05) 60%, rgba(34, 211, 238, 0.14) 92%, rgba(120, 230, 255, 0.55) 100%);
+  animation: sweep 7.5s linear infinite;
+  will-change: transform;
+}
+
+/* 仪表末端辉光点 */
+.gauge-tip {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* 底部区 */
+.btm {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stat-strip {
+  display: flex;
+  gap: 14px;
+}
+.chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(15, 32, 60, 0.72), rgba(9, 18, 36, 0.72));
+  border: 1px solid rgba(56, 116, 190, 0.3);
+  box-shadow: inset 0 0 30px rgba(20, 60, 120, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+.chip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(#22d3ee, #165dff);
+}
+.chip-glyph {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 10px #22d3ee;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.chip-v {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-shadow: 0 0 14px rgba(34, 211, 238, 0.3);
+}
+.chip-l {
+  font-size: 13px;
+  color: #8fb0d6;
+}
+
+/* 跑马灯 */
+.ticker {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(22, 93, 255, 0.14), rgba(9, 18, 36, 0.6));
+  border: 1px solid rgba(56, 116, 190, 0.3);
+  overflow: hidden;
+}
+.ticker-live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 18px;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ff5b52;
+  background: rgba(255, 91, 82, 0.12);
+  border-right: 1px solid rgba(255, 91, 82, 0.3);
+  flex-shrink: 0;
+}
+.tl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5b52;
+  box-shadow: 0 0 8px #ff5b52;
+  animation: pulse 1.4s infinite;
+}
+.ticker-mask {
+  flex: 1;
+  overflow: hidden;
+}
+.ticker-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 46s linear infinite;
+}
+.ticker-item {
+  padding: 0 34px;
+  font-size: 14.5px;
+  color: #b6d2ee;
+  position: relative;
+}
+.ticker-item::after {
+  content: '◆';
+  position: absolute;
+  right: -5px;
+  color: #22d3ee;
+  opacity: 0.5;
+  font-size: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes twinkle {
+  from { opacity: 0.35; }
+  to { opacity: 0.9; }
+}
+@keyframes sweep {
+  0% { transform: translateY(-160px); }
+  100% { transform: translateY(1080px); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 </style>
