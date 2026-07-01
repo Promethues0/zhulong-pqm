@@ -20,6 +20,96 @@ type importPemReq struct {
 	Exposure string `json:"exposure"`
 }
 
+// importPcap POST /assets/import/pcap：M2 被动流量发现。
+//
+// 上传 classic .pcap 抓包（span/tap 镜像或 tcpdump -w），解析其中 TLS 握手，
+// 按服务端 endpoint 归并出密码学资产（协议版本/协商套件/认证算法/证书），
+// 走 ImportPassive（按 endpoint 去重）落库，Method=M2。纯 Go 解析，无 CGO。
+func (s *Server) importPcap(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请上传 pcap 抓包文件（表单字段 file）"})
+		return
+	}
+	f, oErr := file.Open()
+	if oErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无法读取上传文件"})
+		return
+	}
+	defer f.Close()
+	data, _ := io.ReadAll(io.LimitReader(f, 64<<20)) // 64MB 上限
+
+	obs, stats, err := scan.ParsePCAP(data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	exposure := model.ExposureInternal
+	if e := c.PostForm("exposure"); e != "" {
+		exposure = e
+	}
+	name := "被动流量导入"
+	if n := c.PostForm("name"); n != "" {
+		name = n
+	}
+
+	job := model.ScanJob{
+		Name:        name,
+		Targets:     db.MarshalTargets([]string{}),
+		Exposure:    exposure,
+		Status:      model.JobRunning,
+		Method:      model.MethodM2Passive,
+		ScannerType: "passive",
+	}
+	now := time.Now()
+	job.StartedAt = &now
+	s.db.Create(&job)
+
+	runner := scan.NewRunner(s.db, nil)
+	results := make([]model.ScanResult, 0, len(obs))
+	for i := range obs {
+		o := obs[i]
+		res := &model.ScanResult{
+			Host:            o.Host,
+			Port:            o.Port,
+			TLSVersion:      o.Version,
+			CipherSuite:     o.Cipher,
+			KeyAlgo:         o.Algo,
+			KeySize:         o.KeySize,
+			CertFingerprint: o.CertFP,
+			CertSubject:     firstNonEmpty(o.SNI, o.Subject),
+			Method:          model.MethodM2Passive,
+			Source:          model.SourceImport,
+		}
+		candidates := scan.MatchRules(res, model.MethodM2Passive)
+		saved := runner.ImportPassive(job.ID, res, candidates, exposure)
+		var hits []model.RuleHit
+		s.db.Where("scan_result_id = ?", saved.ID).Order("rule_id asc").Find(&hits)
+		saved.Hits = hits
+		results = append(results, *saved)
+	}
+	job.Status = model.JobDone
+	job.ResultCount = len(results)
+	fin := time.Now()
+	job.FinishedAt = &fin
+	s.db.Save(&job)
+
+	s.audit(c, "scan", "scan.import.pcap", auditTarget("ScanJob", job.ID, job.Name), model.AuditSuccess,
+		fmt.Sprintf("包=%d TLS握手=%d 端点=%d 入库=%d", stats.Packets, stats.Handshakes, stats.Endpoints, len(results)))
+	c.JSON(http.StatusCreated, gin.H{"job": job, "results": results, "stats": stats})
+}
+
+// firstNonEmpty 返回首个非空串。
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // importPem POST /assets/import/pem：解析 PEM → x509 → 命中 R-L2-01/02 → 建资产（M5）。
 //
 // 支持 JSON body {name,pem} 或 multipart 上传 file（.pem/.crt）。

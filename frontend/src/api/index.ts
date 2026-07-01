@@ -180,6 +180,14 @@ export const importApi = {
       })
       .then((r) => r.data)
   },
+  /** M2 被动流量发现：上传 classic .pcap 抓包 → 解析 TLS 握手生成资产。 */
+  pcap(form: FormData) {
+    return client
+      .post<ImportResult>('/assets/import/pcap', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data)
+  },
 }
 
 /** R3 ② 建档深化 · CBOM 快照与 diff */

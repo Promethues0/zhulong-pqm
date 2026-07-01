@@ -307,6 +307,26 @@ func (r *Runner) ImportResult(jobID uint, res *model.ScanResult, candidates []mo
 	return res
 }
 
+// ImportPassive M2 被动流量路径：落库一条观测 + 建/并资产。
+//
+// 与 ImportResult 的差异：M2 观测自带 host:port，去重键用 endpoint（同扫描口径，
+// 走 upsertAsset 而非按证书指纹的 upsertImportedAsset），命中新增的 idx_ca_endpoint 唯一索引。
+func (r *Runner) ImportPassive(jobID uint, res *model.ScanResult, candidates []model.RuleHit, exposure string) *model.ScanResult {
+	res.ScanJobID = jobID
+	res.FirstSeen = nowPtr()
+	res.LastSeen = nowPtr()
+	logWrite(r.db.Create(res).Error, fmt.Sprintf("被动导入落库结果（任务 %d）", jobID))
+	r.saveHits(res.ID, candidates)
+
+	asset := r.upsertAsset(res, exposure) // 按 endpoint 去重
+	if asset != nil {
+		res.AssetID = asset.ID
+		logWrite(r.db.Save(res).Error, fmt.Sprintf("回写被动结果 %d 资产关联", res.ID))
+		r.writeAssetEvidence(asset.ID, res)
+	}
+	return res
+}
+
 // upsertImportedAsset 据导入结果建/并资产。证书类无 host:port，去重键退化为 cert 指纹。
 func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *model.CryptoAsset {
 	if exposure == "" {

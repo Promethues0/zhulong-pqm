@@ -22,8 +22,8 @@ const jobs = ref<ScanJob[]>([])
 // a-upload 自定义请求占位：我们用 @change 自行处理 File，不走内置上传。
 const noopRequest = () => ({ abort() {} })
 
-// ---- 导入证据（PEM 证书 / SBOM）----
-const importTab = ref<'pem' | 'sbom'>('pem')
+// ---- 导入证据（PEM 证书 / SBOM / 被动流量 pcap）----
+const importTab = ref<'pem' | 'sbom' | 'pcap'>('pem')
 const importing = ref(false)
 const importForm = reactive({
   name: '',
@@ -127,6 +127,28 @@ async function onPemFile(file: File) {
     await loadJobs()
   } catch {
     Message.error('证书文件导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function onPcapFile(file: File) {
+  importing.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (importForm.name.trim()) fd.append('name', importForm.name.trim())
+    const r = await importApi.pcap(fd)
+    const st = (r as unknown as { stats?: { handshakes?: number; endpoints?: number } }).stats
+    Message.success(
+      st
+        ? `被动解析完成：TLS 握手 ${st.handshakes ?? 0} 个 → 服务端点 ${st.endpoints ?? 0} 个`
+        : summarizeImport(r),
+    )
+    await loadJobs()
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    Message.error(msg || 'pcap 解析失败（仅支持 classic .pcap）')
   } finally {
     importing.value = false
   }
@@ -411,6 +433,33 @@ onBeforeUnmount(() => {
                   </a-upload>
                 </a-space>
                 <div class="field-hint">提取加密库组件 → 命中库类规则（M4）。</div>
+              </a-form>
+            </a-tab-pane>
+            <a-tab-pane key="pcap" title="被动流量 (pcap)">
+              <a-form :model="importForm" layout="vertical">
+                <a-form-item label="资产名称（可选）">
+                  <a-input v-model="importForm.name" placeholder="如 办公区镜像抓包" allow-clear />
+                </a-form-item>
+                <a-space>
+                  <a-upload
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    accept=".pcap,.cap"
+                    :custom-request="noopRequest"
+                    @change="(_: unknown, f: any) => f?.file && onPcapFile(f.file)"
+                  >
+                    <template #upload-button>
+                      <a-button type="primary" :loading="importing">
+                        <template #icon><IconImport /></template>
+                        上传 .pcap 抓包
+                      </a-button>
+                    </template>
+                  </a-upload>
+                </a-space>
+                <div class="field-hint">
+                  旁路镜像 / tcpdump 抓包 → 解析 TLS 握手（SNI·版本·套件·证书）→ 按服务端点建档（M2）。
+                  仅 classic .pcap（pcapng 请另存为 pcap）。
+                </div>
               </a-form>
             </a-tab-pane>
           </a-tabs>

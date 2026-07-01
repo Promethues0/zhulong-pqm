@@ -172,6 +172,7 @@ func (s *Server) Router() *gin.Engine {
 		writer.DELETE("/rules/:id", s.deleteRule)
 		writer.POST("/assets/import/pem", s.importPem)
 		writer.POST("/assets/import/sbom", s.importSbom)
+		writer.POST("/assets/import/pcap", s.importPcap) // M2 被动流量发现（pcap 解析）
 		writer.POST("/assets/import/cbom", s.cbomImport) // ② CBOM 反向导入（FR-4.8）
 
 		writer.GET("/cbom/export", s.cbomExport) // 导出为写级敏感操作（RBAC 矩阵）
