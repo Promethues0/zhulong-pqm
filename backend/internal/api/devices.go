@@ -40,10 +40,16 @@ func validateEndpoint(raw string) error {
 	} else if h, _, err := net.SplitHostPort(raw); err == nil {
 		host = h
 	}
-	if ip := net.ParseIP(strings.Trim(host, "[]")); ip != nil {
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	if ip := net.ParseIP(host); ip != nil {
 		if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
 			return fmt.Errorf("endpoint 指向链路本地/云元数据地址（169.254.0.0/16），已拒绝")
 		}
+	}
+	// 云元数据主机名（绕过 IP 检查的经典手法：域名解析到 169.254.169.254）。
+	switch host {
+	case "metadata.google.internal", "metadata", "instance-data", "metadata.goog":
+		return fmt.Errorf("endpoint 指向云元数据主机名，已拒绝")
 	}
 	return nil
 }
@@ -99,7 +105,7 @@ func (s *Server) createDevice(c *gin.Context) {
 		Vendor:           req.Vendor,
 		Endpoint:         req.Endpoint,
 		Username:         req.Username,
-		Token:            req.Token,
+		Token:            s.encToken(req.Token), // 凭据静态加密
 		CapabilitiesJSON: db.MarshalStrings(req.Capabilities),
 		Status:           model.DeviceStatusUnknown,
 	}
@@ -136,7 +142,7 @@ func (s *Server) updateDevice(c *gin.Context) {
 	dev.Endpoint = req.Endpoint
 	dev.Username = req.Username
 	if req.Token != "" {
-		dev.Token = req.Token
+		dev.Token = s.encToken(req.Token) // 凭据静态加密
 	}
 	if req.Capabilities != nil {
 		dev.CapabilitiesJSON = db.MarshalStrings(req.Capabilities)

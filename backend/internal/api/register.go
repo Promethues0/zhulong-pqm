@@ -192,10 +192,11 @@ func (s *Server) writeRegisterCSV(c *gin.Context, rows []RegisterRow) {
 			hndl = "是"
 		}
 		_ = w.Write([]string{
-			r.Name, r.System, r.Layer, r.Department, r.Owner, r.Algorithm,
+			// 用户/扫描可控文本字段做公式注入防护；数值/枚举字段无需处理。
+			csvGuardFormula(r.Name), csvGuardFormula(r.System), r.Layer, csvGuardFormula(r.Department), csvGuardFormula(r.Owner), csvGuardFormula(r.Algorithm),
 			itoa(r.D1), itoa(r.D2), itoa(r.D3), itoa(r.D4), itoa(r.D5),
 			itoa(r.RiskScore), r.RiskLevel, r.RiskLevelText,
-			hndl, r.SuggestedAlgo, r.MigrateWindow, last,
+			hndl, csvGuardFormula(r.SuggestedAlgo), r.MigrateWindow, last,
 		})
 	}
 	w.Flush()

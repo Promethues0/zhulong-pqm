@@ -151,7 +151,7 @@ func (s *Server) executeRemediation(c *gin.Context) {
 	}
 
 	// 异步执行；任务在独立上下文运行，避免随请求结束被取消（与扫描器一致）。
-	orch := remediate.NewOrchestrator(s.db)
+	orch := remediate.NewOrchestrator(s.db, s.tokenKeySrc())
 	go orch.Run(context.Background(), task.ID)
 
 	loadTaskJSON(&task)

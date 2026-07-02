@@ -18,6 +18,8 @@ type Config struct {
 
 	TLCPAddr    string // 国密 TLCP 监听地址（空=关闭），与明文口并存
 	TLCPCertDir string // 国密 TLCP SM2 双证目录（自动生成）
+
+	EncryptionKey string // 设备凭据静态加密密钥（空=从 JWT 密钥派生）
 }
 
 // Load 从环境变量加载配置，未设置时回落到约定的默认值。
@@ -47,6 +49,8 @@ func Load() *Config {
 		CORSOrigins: origins,
 		TLCPAddr:    envOr("ZPQM_TLCP_ADDR", ""),
 		TLCPCertDir: envOr("ZPQM_TLCP_CERT_DIR", "./tlcp"),
+
+		EncryptionKey: strings.TrimSpace(os.Getenv("ZPQM_ENCRYPTION_KEY")),
 	}
 }
 

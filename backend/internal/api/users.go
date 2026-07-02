@@ -1,12 +1,19 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
 	"zhulong-pqm/internal/model"
+)
+
+// 口令强度：最短长度与 bcrypt 代价（cost 12 比默认 10 更抗离线爆破）。
+const (
+	minPasswordLen = 8
+	bcryptCost     = 12
 )
 
 // me GET /me 返回当前登录用户（含扩展字段），供前端刷新角色/状态。
@@ -44,6 +51,10 @@ func (s *Server) createUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username 和 password 必填"})
 		return
 	}
+	if len(req.Password) < minPasswordLen {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("密码至少 %d 位", minPasswordLen)})
+		return
+	}
 	if !validRole(req.Role) {
 		req.Role = model.RoleViewer
 	}
@@ -53,7 +64,7 @@ func (s *Server) createUser(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": "用户名已存在"})
 		return
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcryptCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码哈希失败"})
 		return
@@ -151,7 +162,11 @@ func (s *Server) changePassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "password 必填"})
 		return
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if len(req.Password) < minPasswordLen {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("密码至少 %d 位", minPasswordLen)})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcryptCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码哈希失败"})
 		return

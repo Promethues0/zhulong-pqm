@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"zhulong-pqm/internal/model"
+	"zhulong-pqm/internal/secret"
 )
 
 // logWrite 记录后台 goroutine 中被静默吞掉的 GORM 写错误（不改变控制流，仅让失败可见）。
@@ -28,12 +29,13 @@ const stepPause = 600 * time.Millisecond
 // 模式与 scan.Runner 一致：Run 同步执行（通常由调用方放入 goroutine），
 // 任务状态机 planned → running → done/failed，每步落库后短暂停顿供前端轮询。
 type Orchestrator struct {
-	db *gorm.DB
+	db       *gorm.DB
+	tokenKey string // 设备凭据解密密钥源（与 api 一致）
 }
 
-// NewOrchestrator 构造改造编排执行器。
-func NewOrchestrator(db *gorm.DB) *Orchestrator {
-	return &Orchestrator{db: db}
+// NewOrchestrator 构造改造编排执行器。tokenKey 用于解密设备凭据。
+func NewOrchestrator(db *gorm.DB, tokenKey string) *Orchestrator {
+	return &Orchestrator{db: db, tokenKey: tokenKey}
 }
 
 // Run 执行一个改造工单：载入工单与设备，对设备做真实连通性探测，
@@ -150,7 +152,7 @@ func (o *Orchestrator) runAction(task *model.RemediationTask, device *model.Devi
 		if username == "" {
 			username = "sysadmin"
 		}
-		ev, err := PushHybridProposal(device.Endpoint, username, device.Token, gatewayPolicyName(task), "mlkem768")
+		ev, err := PushHybridProposal(device.Endpoint, username, secret.Decrypt(o.tokenKey, device.Token), gatewayPolicyName(task), "mlkem768")
 		if err == nil {
 			step.Status = model.StepDone
 			step.Detail = "已下发 ke1_mlkem768 混合提议至网关(真实)"

@@ -127,13 +127,29 @@ func (s *Server) getScan(c *gin.Context) {
 
 	var results []model.ScanResult
 	s.db.Where("scan_job_id = ?", job.ID).Order("id asc").Find(&results)
-	for i := range results {
-		var hits []model.RuleHit
-		s.db.Where("scan_result_id = ?", results[i].ID).Order("rule_id asc").Find(&hits)
-		results[i].Hits = hits
-	}
+	s.attachHits(results)
 
 	c.JSON(http.StatusOK, gin.H{"job": job, "results": results})
+}
+
+// attachHits 批量为一组结果加载命中规则，避免逐条查询的 N+1（一次 IN 查询 + 分组）。
+func (s *Server) attachHits(results []model.ScanResult) {
+	if len(results) == 0 {
+		return
+	}
+	ids := make([]uint, len(results))
+	for i := range results {
+		ids[i] = results[i].ID
+	}
+	var hits []model.RuleHit
+	s.db.Where("scan_result_id IN ?", ids).Order("rule_id asc").Find(&hits)
+	byRes := make(map[uint][]model.RuleHit, len(results))
+	for _, h := range hits {
+		byRes[h.ScanResultID] = append(byRes[h.ScanResultID], h)
+	}
+	for i := range results {
+		results[i].Hits = byRes[results[i].ID]
+	}
 }
 
 // exportScan GET /scans/:id/export → 该扫描任务全部探测结果的 CSV
@@ -146,6 +162,7 @@ func (s *Server) exportScan(c *gin.Context) {
 	}
 	var results []model.ScanResult
 	s.db.Where("scan_job_id = ?", job.ID).Order("id asc").Find(&results)
+	s.attachHits(results)
 
 	var b strings.Builder
 	b.WriteString("\xEF\xBB\xBF") // UTF-8 BOM
@@ -154,10 +171,8 @@ func (s *Server) exportScan(c *gin.Context) {
 
 	for i := range results {
 		r := &results[i]
-		var hits []model.RuleHit
-		s.db.Where("scan_result_id = ?", r.ID).Order("rule_id asc").Find(&hits)
-		ruleIDs := make([]string, 0, len(hits))
-		for _, h := range hits {
+		ruleIDs := make([]string, 0, len(r.Hits))
+		for _, h := range r.Hits {
 			ruleIDs = append(ruleIDs, h.RuleID)
 		}
 		notAfter := ""

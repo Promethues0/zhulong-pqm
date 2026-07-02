@@ -173,8 +173,18 @@ func (s *Server) auditFilteredQuery(c *gin.Context) *gorm.DB {
 	return q
 }
 
-// csvCell 转义 CSV 单元格（含逗号/引号/换行时加引号）。
+// csvGuardFormula 防 CSV 公式注入：以 = + - @ Tab CR 开头的单元格会被 Excel/Sheets
+// 当公式执行（如恶意证书 CN "=cmd|..."），前置单引号使其被当作纯文本。
+func csvGuardFormula(s string) string {
+	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
+		return "'" + s
+	}
+	return s
+}
+
+// csvCell 转义 CSV 单元格（防公式注入 + 含逗号/引号/换行时加引号）。
 func csvCell(s string) string {
+	s = csvGuardFormula(s)
 	if strings.ContainsAny(s, ",\"\n\r") {
 		return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 	}

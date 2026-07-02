@@ -76,7 +76,16 @@ func scanWithRetry(ctx context.Context, sc Scanner, host string, port int, pol R
 		if err == nil || attempt >= pol.MaxRetries || !isRetryable(err) {
 			return res, err
 		}
-		backoff := pol.BaseBackoff << attempt // base * 2^attempt
+		// 封顶移位数与退避时长：ZPQM_SCAN_RETRIES 配置很大时，
+		// int64 左移会溢出成负或巨值，故 shift 封顶 16、退避封顶 30s。
+		shift := attempt
+		if shift > 16 {
+			shift = 16
+		}
+		backoff := pol.BaseBackoff << shift // base * 2^shift
+		if backoff > 30*time.Second {
+			backoff = 30 * time.Second
+		}
 		select {
 		case <-ctx.Done():
 			return res, err

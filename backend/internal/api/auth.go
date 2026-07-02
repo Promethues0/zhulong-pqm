@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -37,17 +38,28 @@ func (s *Server) login(c *gin.Context) {
 		return
 	}
 
+	// 暴力破解限流：按 用户名+IP，窗口内失败超阈值即临时锁定。
+	limKey := strings.ToLower(strings.TrimSpace(req.Username)) + "|" + c.ClientIP()
+	if ok, wait := loginLimiter.allow(limKey); !ok {
+		s.auditLogin(c, req.Username, model.AuditDenied, "登录尝试过于频繁，已临时锁定")
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": fmt.Sprintf("登录尝试过于频繁，请 %d 秒后再试", wait)})
+		return
+	}
+
 	var user model.User
 	if err := s.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+		loginLimiter.fail(limKey)
 		s.auditLogin(c, req.Username, model.AuditFailure, "用户名或密码错误")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
+		loginLimiter.fail(limKey)
 		s.auditLogin(c, req.Username, model.AuditFailure, "用户名或密码错误")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
+	loginLimiter.reset(limKey) // 成功登录清除失败计数
 	// 禁用用户拒绝登录。
 	if user.Status == model.UserDisabled {
 		s.auditLogin(c, req.Username, model.AuditDenied, "用户已禁用")
