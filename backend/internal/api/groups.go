@@ -23,7 +23,7 @@ func loadAssetGroupTags(a *model.CryptoAsset) {
 func (s *Server) listAssetGroups(c *gin.Context) {
 	var groups []model.AssetGroup
 	if err := s.db.Order("kind asc, name asc").Find(&groups).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	type groupOut struct {
@@ -85,7 +85,7 @@ func (s *Server) createAssetGroup(c *gin.Context) {
 	}
 	g := model.AssetGroup{Name: req.Name, Kind: req.Kind, Description: req.Description, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	if err := s.db.Create(&g).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "asset", "group.create", auditTarget("AssetGroup", g.ID, g.Name), model.AuditSuccess, g.Kind)
@@ -126,7 +126,7 @@ func (s *Server) updateAssetGroup(c *gin.Context) {
 	g.Description = req.Description
 	g.UpdatedAt = time.Now()
 	if err := s.db.Save(&g).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "asset", "group.update", auditTarget("AssetGroup", g.ID, g.Name), model.AuditSuccess, "")
@@ -141,7 +141,7 @@ func (s *Server) deleteAssetGroup(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&model.AssetGroup{}, g.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "asset", "group.delete", auditTarget("AssetGroup", g.ID, g.Name), model.AuditSuccess, "")

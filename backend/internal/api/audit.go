@@ -139,7 +139,7 @@ func (s *Server) listAuditLogs(c *gin.Context) {
 	limit, offset := pageLimitOffset(c, 20)
 	var items []model.AuditLog
 	if err := q.Order("created_at desc").Limit(limit).Offset(offset).Find(&items).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"total": total, "items": items})
@@ -196,7 +196,7 @@ func csvCell(s string) string {
 func (s *Server) exportAuditLogs(c *gin.Context) {
 	var items []model.AuditLog
 	if err := s.auditFilteredQuery(c).Order("created_at desc").Limit(50000).Find(&items).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 

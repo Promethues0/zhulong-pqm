@@ -29,7 +29,7 @@ func (s *Server) createReport(c *gin.Context) {
 	title, md := report.Generate(assets, req.Scope)
 	rep := model.Report{Title: title, Scope: req.Scope, Markdown: md}
 	if err := s.db.Create(&rep).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "report", "report.create", auditTarget("Report", rep.ID, rep.Title), model.AuditSuccess, "范围="+req.Scope)

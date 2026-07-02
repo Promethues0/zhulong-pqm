@@ -75,7 +75,7 @@ func loadDeviceCaps(d *model.Device) {
 func (s *Server) listDevices(c *gin.Context) {
 	var devices []model.Device
 	if err := s.db.Order("created_at desc").Find(&devices).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range devices {
@@ -110,7 +110,7 @@ func (s *Server) createDevice(c *gin.Context) {
 		Status:           model.DeviceStatusUnknown,
 	}
 	if err := s.db.Create(&dev).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadDeviceCaps(&dev)
@@ -148,7 +148,7 @@ func (s *Server) updateDevice(c *gin.Context) {
 		dev.CapabilitiesJSON = db.MarshalStrings(req.Capabilities)
 	}
 	if err := s.db.Save(&dev).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadDeviceCaps(&dev)
@@ -164,7 +164,7 @@ func (s *Server) deleteDevice(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&model.Device{}, dev.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "device", "device.delete", auditTarget("Device", dev.ID, dev.Name), model.AuditSuccess, "")

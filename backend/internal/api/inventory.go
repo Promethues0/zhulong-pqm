@@ -124,7 +124,7 @@ func (s *Server) setAssetStatus(c *gin.Context) {
 	a.Status = to
 	a.Version++
 	if err := s.db.Save(&a).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	// 留痕 who/when/from→to（FR-4.4.1）。
@@ -158,7 +158,7 @@ func (s *Server) statusAction(c *gin.Context, to string) {
 	a.Status = to
 	a.Version++
 	if err := s.db.Save(&a).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.writeEvidence(a.ID, model.EvidenceAudit, "",

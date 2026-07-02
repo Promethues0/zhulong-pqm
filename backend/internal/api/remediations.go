@@ -28,7 +28,7 @@ func loadTaskJSON(t *model.RemediationTask) {
 func (s *Server) listRemediations(c *gin.Context) {
 	var tasks []model.RemediationTask
 	if err := s.db.Order("created_at desc").Find(&tasks).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range tasks {
@@ -129,7 +129,7 @@ func (s *Server) createRemediation(c *gin.Context) {
 	task.EvidenceJSON = db.MarshalEvidence(nil)
 
 	if err := s.db.Create(&task).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadTaskJSON(&task)
@@ -179,7 +179,7 @@ func (s *Server) rollbackRemediation(c *gin.Context) {
 	task.Status = model.RemRolledback
 	task.FinishedAt = &now
 	if err := s.db.Save(&task).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadTaskJSON(&task)

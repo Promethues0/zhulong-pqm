@@ -41,7 +41,7 @@ func (s *Server) listAssets(c *gin.Context) {
 
 	var assets []model.CryptoAsset
 	if err := q.Order("risk_score desc").Find(&assets).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range assets {
@@ -103,7 +103,7 @@ func (s *Server) createAsset(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "该资产锚点（endpoint 或证书指纹）已存在，避免重复录入"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadAssetGroupTags(&a)
@@ -128,7 +128,7 @@ func (s *Server) updateAsset(c *gin.Context) {
 	in.GroupTagsJSON = db.MarshalStrings(in.GroupTags) // ⑥ 分组标签持久化
 	s.recompute(&in)
 	if err := s.db.Save(&in).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadAssetGroupTags(&in)
@@ -137,7 +137,7 @@ func (s *Server) updateAsset(c *gin.Context) {
 
 func (s *Server) deleteAsset(c *gin.Context) {
 	if err := s.db.Delete(&model.CryptoAsset{}, c.Param("id")).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": true})
@@ -182,7 +182,7 @@ func (s *Server) scoreAsset(c *gin.Context) {
 	s.recompute(&a)
 	if err := s.db.Save(&a).Error; err != nil {
 		s.audit(c, "asset", "asset.score", auditTarget("CryptoAsset", a.ID, a.Name), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	// 成功后写一条 Reason=manual 的不可变评分快照（当前生效方案 + 操作人）。

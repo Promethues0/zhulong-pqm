@@ -40,7 +40,7 @@ func (s *Server) listThreatIntel(c *gin.Context) {
 	limit, offset := pageLimitOffset(c, 50)
 	var items []model.ThreatIntel
 	if err := q.Order("ingested_at desc, id desc").Limit(limit).Offset(offset).Find(&items).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range items {
@@ -74,7 +74,7 @@ func (s *Server) createThreatIntel(c *gin.Context) {
 	t.IngestedAt = time.Now()
 	t.AffectedAlgosJSON = db.MarshalStrings(t.AffectedAlgos)
 	if err := s.db.Create(&t).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 

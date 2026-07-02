@@ -28,7 +28,7 @@ func (s *Server) listRules(c *gin.Context) {
 
 	var rules []model.ScanRule
 	if err := q.Order("rule_id asc").Find(&rules).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	// method 过滤需反序列化 Methods JSON 后内存过滤。
@@ -124,7 +124,7 @@ func (s *Server) updateRule(c *gin.Context) {
 	}
 	if err := s.db.Save(&rule).Error; err != nil {
 		s.audit(c, "rule", "rule.update", auditTargetStr("ScanRule", rule.RuleID, rule.CheckItem), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	rule.Methods = db.UnmarshalStrings(rule.MethodsJSON)
@@ -186,7 +186,7 @@ func (s *Server) createRule(c *gin.Context) {
 		Enabled:        true,
 	}
 	if err := s.db.Create(&rule).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	rule.Methods = db.UnmarshalStrings(rule.MethodsJSON)
@@ -207,7 +207,7 @@ func (s *Server) deleteRule(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&model.ScanRule{}, rule.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "rule", "rule.delete", auditTargetStr("ScanRule", rule.RuleID, rule.CheckItem), model.AuditSuccess, "")

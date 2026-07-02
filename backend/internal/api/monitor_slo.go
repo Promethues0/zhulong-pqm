@@ -103,7 +103,7 @@ func (s *Server) sloSeries(c *gin.Context) {
 	limit, _ := pageLimitOffset(c, 500)
 	var points []model.SLOMetric
 	if err := q.Order("sampled_at asc").Limit(limit).Find(&points).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

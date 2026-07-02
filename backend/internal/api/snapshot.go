@@ -97,7 +97,7 @@ func (s *Server) createSnapshot(c *gin.Context) {
 		CreatedAt:    time.Now(),
 	}
 	if err := s.db.Create(&snap).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	snap.AlgoDist = algoDist
@@ -137,7 +137,7 @@ func (s *Server) deleteSnapshot(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&model.CbomSnapshot{}, snap.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "cbom", "cbom.snapshot.delete",

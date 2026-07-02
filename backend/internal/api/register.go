@@ -149,7 +149,7 @@ func (s *Server) buildRegisterRows(assets []model.CryptoAsset) []RegisterRow {
 func (s *Server) riskRegister(c *gin.Context) {
 	assets, err := s.registerQuery(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	rows := s.buildRegisterRows(assets)
@@ -165,7 +165,7 @@ func (s *Server) riskRegister(c *gin.Context) {
 func (s *Server) exportRegister(c *gin.Context) {
 	assets, err := s.registerQuery(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	rows := s.buildRegisterRows(assets)

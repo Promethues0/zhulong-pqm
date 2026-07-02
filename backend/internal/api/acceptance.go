@@ -114,7 +114,7 @@ func (s *Server) createVerifyRun(c *gin.Context) {
 	run.Total = len(verify.CasesForTrack(run.Track))
 
 	if err := s.db.Create(&run).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (s *Server) createVerifyRun(c *gin.Context) {
 func (s *Server) listVerifyRuns(c *gin.Context) {
 	var runs []model.AcceptanceRun
 	if err := s.db.Order("created_at desc").Find(&runs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, runs)
@@ -174,7 +174,7 @@ func (s *Server) createVerifyReport(c *gin.Context) {
 		GatePass:  run.GatePass,
 	}
 	if err := s.db.Create(&rep).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	run.ReportID = &rep.ID
@@ -279,7 +279,7 @@ func (s *Server) signVerifyReport(c *gin.Context) {
 	}
 
 	if err := s.db.Save(&rep).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "acceptance", "acceptance.report.sign", auditTarget("AcceptanceReport", rep.ID, rep.Title),
@@ -353,7 +353,7 @@ func (s *Server) verifyRemediation(c *gin.Context) {
 	run.Total = len(verify.CasesForTrack(run.Track))
 
 	if err := s.db.Create(&run).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	go verify.NewRunner(s.db, nil).Run(context.Background(), run.ID)
@@ -368,7 +368,7 @@ func (s *Server) verifyRemediation(c *gin.Context) {
 func (s *Server) listVerifyRisks(c *gin.Context) {
 	var risks []model.LegacyRisk
 	if err := s.db.Order("always_on_slo desc, code asc").Find(&risks).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, risks)

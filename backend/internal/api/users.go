@@ -30,7 +30,7 @@ func (s *Server) me(c *gin.Context) {
 func (s *Server) listUsers(c *gin.Context) {
 	var users []model.User
 	if err := s.db.Order("id asc").Find(&users).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -78,7 +78,7 @@ func (s *Server) createUser(c *gin.Context) {
 	}
 	if err := s.db.Create(&u).Error; err != nil {
 		s.audit(c, "user", "user.create", auditTarget("User", 0, req.Username), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "user", "user.create", auditTarget("User", u.ID, u.Username), model.AuditSuccess, "角色="+u.Role)
@@ -131,7 +131,7 @@ func (s *Server) updateUser(c *gin.Context) {
 		u.DisplayName = *req.DisplayName
 	}
 	if err := s.db.Save(&u).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "user", "user.update", auditTarget("User", u.ID, u.Username), model.AuditSuccess,
@@ -172,7 +172,7 @@ func (s *Server) changePassword(c *gin.Context) {
 		return
 	}
 	if err := s.db.Model(&u).Update("password_hash", string(hash)).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "user", "user.password", auditTarget("User", u.ID, u.Username), model.AuditSuccess, "改密成功")
@@ -198,7 +198,7 @@ func (s *Server) deleteUser(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&model.User{}, u.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "user", "user.delete", auditTarget("User", u.ID, u.Username), model.AuditSuccess, "删除用户")

@@ -116,7 +116,7 @@ func (s *Server) createScoreProfile(c *gin.Context) {
 	}
 	if err := s.db.Create(&p).Error; err != nil {
 		s.audit(c, "score", "profile.create", auditTarget("ScoreProfile", 0, req.Name), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "score", "profile.create", auditTarget("ScoreProfile", p.ID, p.Name), model.AuditSuccess,
@@ -161,7 +161,7 @@ func (s *Server) updateScoreProfile(c *gin.Context) {
 		}
 	}
 	if err := s.db.Save(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "score", "profile.update", auditTarget("ScoreProfile", p.ID, p.Name), model.AuditSuccess,
@@ -185,7 +185,7 @@ func (s *Server) deleteScoreProfile(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&model.ScoreProfile{}, p.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "score", "profile.delete", auditTarget("ScoreProfile", p.ID, p.Name), model.AuditSuccess, "")
@@ -337,7 +337,7 @@ func (s *Server) activateScoreProfile(c *gin.Context) {
 		}).Error
 	}); err != nil {
 		s.audit(c, "score", "profile.activate", auditTarget("ScoreProfile", p.ID, p.Name), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	p.IsActive = true
@@ -352,7 +352,7 @@ func (s *Server) activateScoreProfile(c *gin.Context) {
 		model.ReasonProfileSwitch, "all", actorName(c))
 	if err != nil {
 		s.audit(c, "score", "profile.activate", auditTarget("ScoreProfile", p.ID, p.Name), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -461,7 +461,7 @@ func (s *Server) rescoreAssets(c *gin.Context) {
 
 	var assets []model.CryptoAsset
 	if err := q.Find(&assets).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if len(assets) == 0 {
@@ -498,7 +498,7 @@ func (s *Server) rescoreAssets(c *gin.Context) {
 	res, err := s.recomputeAll(assets, w, pid, pid, pid, pname, reason, scope, actorName(c))
 	if err != nil {
 		s.audit(c, "score", "rescore", auditTargetStr("Scope", scope, scope), model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 

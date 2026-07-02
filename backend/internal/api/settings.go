@@ -44,7 +44,7 @@ func settingReadOnly(key string) bool {
 func (s *Server) listSettings(c *gin.Context) {
 	var rows []model.Setting
 	if err := s.db.Order("category asc, key asc").Find(&rows).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	grouped := map[string][]settingItem{}
@@ -191,7 +191,7 @@ func (s *Server) updateSetting(c *gin.Context) {
 	r.UpdatedBy = actorName(c)
 	r.UpdatedAt = time.Now()
 	if err := s.db.Save(&r).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "setting", "setting.update", auditTargetStr("Setting", key, key), model.AuditSuccess, "")

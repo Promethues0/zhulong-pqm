@@ -128,7 +128,7 @@ func (s *Server) dashboardTrend(c *gin.Context) {
 	from := time.Now().AddDate(0, 0, -days+1).Format("2006-01-02")
 	var rows []model.MetricSnapshot
 	if err := s.db.Where("date >= ?", from).Order("date asc").Find(&rows).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	// 多序列时序：前端按点连线。
@@ -158,7 +158,7 @@ func (s *Server) captureMetricsSnapshot(c *gin.Context) {
 	if err != nil {
 		s.audit(c, "setting", "metrics.snapshot", auditTargetStr("MetricSnapshot", snap.Date, snap.Date),
 			model.AuditFailure, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "setting", "metrics.snapshot", auditTargetStr("MetricSnapshot", snap.Date, snap.Date),

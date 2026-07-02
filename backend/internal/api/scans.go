@@ -72,7 +72,7 @@ func (s *Server) createScan(c *gin.Context) {
 		job.NextRunAt = scan.NextCronRun(job.Schedule)
 	}
 	if err := s.db.Create(&job).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (s *Server) scanResults(c *gin.Context) {
 func (s *Server) listScans(c *gin.Context) {
 	var jobs []model.ScanJob
 	if err := s.db.Order("created_at desc").Find(&jobs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range jobs {

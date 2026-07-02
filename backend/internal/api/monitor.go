@@ -31,7 +31,7 @@ func withNextRun(p *model.MonitorPolicy) {
 func (s *Server) listMonitorPolicies(c *gin.Context) {
 	var policies []model.MonitorPolicy
 	if err := s.db.Order("id asc").Find(&policies).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range policies {
@@ -107,7 +107,7 @@ func (s *Server) createMonitorPolicy(c *gin.Context) {
 		return
 	}
 	if err := s.db.Create(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	monitor.SyncPolicy(s.sched, s.db, &p)
@@ -139,7 +139,7 @@ func (s *Server) updateMonitorPolicy(c *gin.Context) {
 		return
 	}
 	if err := s.db.Save(&in).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	monitor.SyncPolicy(s.sched, s.db, &in)
@@ -157,7 +157,7 @@ func (s *Server) deleteMonitorPolicy(c *gin.Context) {
 		return
 	}
 	if err := s.db.Delete(&p).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	monitor.UnregisterPolicy(s.sched, p.ID)
@@ -225,7 +225,7 @@ func (s *Server) listMonitorEvents(c *gin.Context) {
 	limit, offset := pageLimitOffset(c, 50)
 	var events []model.MonitorEvent
 	if err := q.Order("occurred_at desc").Limit(limit).Offset(offset).Find(&events).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	for i := range events {
@@ -244,7 +244,7 @@ func (s *Server) ackMonitorEvent(c *gin.Context) {
 	e.Status = model.MonAcked
 	e.AckedBy = actorName(c)
 	if err := s.db.Model(&e).Updates(map[string]any{"status": e.Status, "acked_by": e.AckedBy}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadEventJSON(&e)
@@ -269,7 +269,7 @@ func (s *Server) resolveMonitorEvent(c *gin.Context) {
 	if err := s.db.Model(&e).Updates(map[string]any{
 		"status": e.Status, "resolved_at": e.ResolvedAt, "acked_by": e.AckedBy,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	loadEventJSON(&e)
@@ -292,7 +292,7 @@ func (s *Server) reassessMonitorEvent(c *gin.Context) {
 	}
 	asset, hist, err := monitor.Reassess(s.db, *e.AssetID, actorName(c), "event-reassess")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	taskID := hist.ID
@@ -340,7 +340,7 @@ func (s *Server) listLegacyRisks(c *gin.Context) {
 	var risks []model.LegacyRisk
 	// AlwaysOnSLO 常显项置顶，其余按编号。
 	if err := q.Order("always_on_slo desc, code asc").Find(&risks).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, risks)
@@ -362,7 +362,7 @@ func (s *Server) createLegacyRisk(c *gin.Context) {
 		r.Status = model.RiskTracking
 	}
 	if err := s.db.Create(&r).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "monitor", "monitor.risk.create", auditTarget("LegacyRisk", r.ID, r.Code),
@@ -388,7 +388,7 @@ func (s *Server) updateLegacyRisk(c *gin.Context) {
 		in.Code = existing.Code
 	}
 	if err := s.db.Save(&in).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "monitor", "monitor.risk.update", auditTarget("LegacyRisk", in.ID, in.Code),
@@ -422,7 +422,7 @@ func (s *Server) closeLegacyRisk(c *gin.Context) {
 	if err := s.db.Model(&r).Updates(map[string]any{
 		"status": r.Status, "evidence_url": r.EvidenceURL,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	s.audit(c, "monitor", "monitor.risk.close", auditTarget("LegacyRisk", r.ID, r.Code),
