@@ -7,9 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
+
+// gwEnvOr 读环境变量，缺省回落。
+func gwEnvOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
+}
 
 // gwStepTimeout 真机联调时每一步 REST 调用的超时。
 const gwStepTimeout = 8 * time.Second
@@ -132,14 +141,17 @@ func gwCreatePolicy(base, token, name, pqcGroup string) (string, error) {
 		Auth:        "sm2",
 		IKEVersion:  "V2",
 		IKEMode:     "main",
-		IKEEnc:      "SM4",
-		IKEAuth:     "SM3",
+		// 传输密码套件：默认 AES256/SHA256（stock strongSwan 6.x 原生支持，配合 ml 插件
+		// 可加载 ke1_mlkem 后量子混合）；国密网关(GM-patched strongSwan)可用
+		// ZPQM_GW_ENC=SM4 ZPQM_GW_INTEG=SM3 切回 SM4/SM3。
+		IKEEnc:      gwEnvOr("ZPQM_GW_ENC", "AES256"),
+		IKEAuth:     gwEnvOr("ZPQM_GW_INTEG", "SHA256"),
 		DHGroup:     "19",
 		IKELifetime: 86400,
 		ESPMode:     "tunnel",
 		Proto:       "ESP",
-		ESPEnc:      "SM4",
-		ESPAuth:     "SM3",
+		ESPEnc:      gwEnvOr("ZPQM_GW_ENC", "AES256"),
+		ESPAuth:     gwEnvOr("ZPQM_GW_INTEG", "SHA256"),
 		PFS:         true,
 		PQCGroup:    pqcGroup,
 		LocalAddr:   "0.0.0.0",
