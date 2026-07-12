@@ -13,6 +13,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scoring"
 )
@@ -343,6 +344,7 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 	}
 
 	layer := model.LayerL2 // 证书导入归 L2 协议/传输层（PKI）
+	authSafety := cryptoref.AuthSafetyForAlgo(res.KeyAlgo)
 	dims := scoring.Derive(scoring.DeriveInput{
 		Algorithm:  res.KeyAlgo,
 		KeySize:    res.KeySize,
@@ -350,6 +352,7 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 		Exposure:   exposure,
 		Layer:      layer,
 		LongLived:  certLongLived(res.CertNotAfter),
+		AuthSafety: authSafety,
 	})
 	result := scoring.Score(dims)
 
@@ -372,6 +375,7 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 		a.RawScore = result.RawScore
 		a.RiskLevel = result.Level
 		a.RiskLevelText = result.LevelText
+		a.AuthSafety = authSafety
 		a.HNDL = result.HNDL
 		a.SuggestedAlgo = scoring.SuggestAlgo(res.KeyAlgo)
 		a.RiskHint = fmt.Sprintf("%s 综合风险 %d(%s) 建议迁移窗口 %s",
@@ -407,6 +411,8 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 	}
 	endpoint := fmt.Sprintf("%s:%d", res.Host, res.Port)
 
+	kexSafety := cryptoref.SafetyForGroupName(res.KexGroup)
+	authSafety := cryptoref.AuthSafetyForAlgo(res.KeyAlgo)
 	dims := scoring.Derive(scoring.DeriveInput{
 		Algorithm:  res.KeyAlgo,
 		KeySize:    res.KeySize,
@@ -414,6 +420,8 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 		Exposure:   exposure,
 		Layer:      model.LayerL1, // 扫描发现默认归为 L1 应用/会话层
 		LongLived:  certLongLived(res.CertNotAfter),
+		KexSafety:  kexSafety,
+		AuthSafety: authSafety,
 	})
 	result := scoring.Score(dims)
 
@@ -442,7 +450,10 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 		a.RawScore = result.RawScore
 		a.RiskLevel = result.Level
 		a.RiskLevelText = result.LevelText
-		a.HNDL = result.HNDL
+		a.KexGroup = res.KexGroup
+		a.KexSafety = kexSafety
+		a.AuthSafety = authSafety
+		a.HNDL = result.HNDL && !cryptoref.KexMitigatesHNDL(kexSafety) // KEX 已迁移→清 HNDL
 		a.SuggestedAlgo = scoring.SuggestAlgo(res.KeyAlgo)
 		a.RiskHint = fmt.Sprintf("%s/%s 综合风险 %d(%s) 建议迁移窗口 %s",
 			res.KeyAlgo, res.TLSVersion, result.Score, result.LevelText, result.Window)

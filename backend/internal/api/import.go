@@ -77,6 +77,7 @@ func (s *Server) importPcap(c *gin.Context) {
 			CipherSuite:     o.Cipher,
 			KeyAlgo:         o.Algo,
 			KeySize:         o.KeySize,
+			KexGroup:        o.KexGroup,
 			CertFingerprint: o.CertFP,
 			CertSubject:     firstNonEmpty(o.SNI, o.Subject),
 			Method:          model.MethodM2Passive,

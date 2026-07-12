@@ -72,6 +72,23 @@ func SafetyFromKind(kind string) string {
 	}
 }
 
+// SafetyForGroupName 由组规范名反查安全态（runner 用，避免重复按码点分类）。
+// "unknown-0x..." 前缀（尺寸兜底命名）保守判 hybrid；空名 na。
+func SafetyForGroupName(name string) string {
+	if name == "" {
+		return SafetyNA
+	}
+	for _, g := range namedGroups {
+		if g.name == name {
+			return SafetyFromKind(g.kind)
+		}
+	}
+	if len(name) >= 8 && name[:8] == "unknown-" {
+		return SafetyHybrid
+	}
+	return SafetyClassical
+}
+
 // KexSafetyForGroup 由码点（+客户端 key_share 字节数兜底）判密钥交换维安全态。
 //
 // 判定优先级：① GREASE→噪声（返回空）；② 命中表→按 kind；

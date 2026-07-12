@@ -65,3 +65,21 @@ func TestKexSafetyForGroup(t *testing.T) {
 		t.Errorf("unknown small = %q, want classical", s)
 	}
 }
+
+func TestSafetyForGroupName(t *testing.T) {
+	if s := SafetyForGroupName("X25519MLKEM768"); s != SafetyHybrid {
+		t.Errorf("X25519MLKEM768 = %q, want hybrid", s)
+	}
+	if s := SafetyForGroupName("MLKEM768"); s != SafetySafe {
+		t.Errorf("MLKEM768 = %q, want safe", s)
+	}
+	if s := SafetyForGroupName("x25519"); s != SafetyClassical {
+		t.Errorf("x25519 = %q, want classical", s)
+	}
+	if s := SafetyForGroupName(""); s != SafetyNA {
+		t.Errorf("empty = %q, want na", s)
+	}
+	if s := SafetyForGroupName("unknown-0x9ABC"); s != SafetyHybrid {
+		t.Errorf("unknown- prefix = %q, want hybrid(保守)", s)
+	}
+}
