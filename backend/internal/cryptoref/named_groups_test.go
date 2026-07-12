@@ -82,4 +82,14 @@ func TestSafetyForGroupName(t *testing.T) {
 	if s := SafetyForGroupName("unknown-0x9ABC"); s != SafetyHybrid {
 		t.Errorf("unknown- prefix = %q, want hybrid(保守)", s)
 	}
+	// 大小写不敏感：MatchRules 会把 cipher 整体 ToUpper 后传入，需仍能命中规范名。
+	if s := SafetyForGroupName("CURVESM2MLKEM768"); s != SafetyHybrid {
+		t.Errorf("CURVESM2MLKEM768(大写) = %q, want hybrid", s)
+	}
+	if s := SafetyForGroupName("x25519mlkem768"); s != SafetyHybrid {
+		t.Errorf("x25519mlkem768(小写) = %q, want hybrid", s)
+	}
+	if s := SafetyForGroupName("UNKNOWN-0x9ABC"); s != SafetyHybrid {
+		t.Errorf("UNKNOWN- prefix(大写) = %q, want hybrid(保守)", s)
+	}
 }

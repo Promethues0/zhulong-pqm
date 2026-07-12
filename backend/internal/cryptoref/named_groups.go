@@ -4,7 +4,10 @@
 // 数据来源与逐条 IANA 校验见 docs/superpowers/specs/2026-07-11-pqc-crypto-lib-research.md。
 package cryptoref
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // 量子安全态三分类 + 不适用。
 const (
@@ -79,11 +82,11 @@ func SafetyForGroupName(name string) string {
 		return SafetyNA
 	}
 	for _, g := range namedGroups {
-		if g.name == name {
+		if strings.EqualFold(g.name, name) {
 			return SafetyFromKind(g.kind)
 		}
 	}
-	if len(name) >= 8 && name[:8] == "unknown-" {
+	if strings.HasPrefix(strings.ToLower(name), "unknown-") {
 		return SafetyHybrid
 	}
 	return SafetyClassical
