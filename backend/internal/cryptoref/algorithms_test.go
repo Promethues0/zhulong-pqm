@@ -4,15 +4,15 @@ import "testing"
 
 func TestAuthSafetyForAlgo(t *testing.T) {
 	cases := map[string]string{
-		"":                 SafetyNA,
-		"RSA":              SafetyClassical,
-		"ECDSA":            SafetyClassical,
-		"SM2":              SafetyClassical,
-		"ML-DSA-65":        SafetySafe,
-		"Dilithium3":       SafetySafe,
+		"":                  SafetyNA,
+		"RSA":               SafetyClassical,
+		"ECDSA":             SafetyClassical,
+		"SM2":               SafetyClassical,
+		"ML-DSA-65":         SafetySafe,
+		"Dilithium3":        SafetySafe,
 		"SLH-DSA-SHA2-128s": SafetySafe,
-		"Aigis-sig":        SafetySafe,
-		"ECDSA+ML-DSA-65":  SafetyHybrid, // 经典+PQC 组合串
+		"Aigis-sig":         SafetySafe,
+		"ECDSA+ML-DSA-65":   SafetyHybrid, // 经典+PQC 组合串
 	}
 	for algo, want := range cases {
 		if got := AuthSafetyForAlgo(algo); got != want {
