@@ -301,3 +301,22 @@ func TestObservationFromNegotiatedGroup(t *testing.T) {
 		t.Errorf("GREASE wrote (%q,%q), want empty", o2.KexGroup, o2.KexSafety)
 	}
 }
+
+// TestStripLink_SLL2 现代 tcpdump -i any 用 LINUX_SLL2(276)：头 20 字节，protocol 在偏移 0，
+// payload 从偏移 20 起。探针 tcpdump 回退路径依赖此。
+func TestStripLink_SLL2(t *testing.T) {
+	pkt := make([]byte, 24)
+	pkt[0], pkt[1] = 0x08, 0x00 // protocol = IPv4
+	pkt[20], pkt[21], pkt[22], pkt[23] = 0xde, 0xad, 0xbe, 0xef
+	payload, et := stripLink(pkt, 276)
+	if et != 0x0800 {
+		t.Errorf("ethertype = 0x%04x, want 0x0800", et)
+	}
+	if len(payload) != 4 || payload[0] != 0xde || payload[3] != 0xef {
+		t.Errorf("payload = %x, want deadbeef", payload)
+	}
+	// 过短的 SLL2 帧安全返回 nil，不 panic
+	if p, _ := stripLink(make([]byte, 10), 276); p != nil {
+		t.Error("过短 SLL2 应返回 nil")
+	}
+}
