@@ -195,3 +195,14 @@ sudo setcap cap_net_raw+ep ./zhulong-pqm-agent
 常驻：`--interval 300` 每 5 分钟抓一轮。多探针=在各旁路点各部署一个 `--role=probe` 实例（各自注册取 Key）。到「密码使用点清单」按来源=agent 看，含协商组/后量子态。
 
 > 服务端集中下发抓包任务（按网段分发给多探针、租约领任务）是下一里程碑 M-D2；本版探针为配置驱动。
+
+### 8.1 managed 模式（控制台下发任务）
+
+探针不写死本地抓包参数，而是**轮询领取控制台下发的抓包任务**（拉取式，探针只出不入）：
+
+```bash
+sudo ZPQM_AGENT_SERVER=http://<平台>:8099 ZPQM_AGENT_KEY=zpqm-agent-.... \
+  ./zhulong-pqm-agent --role=probe --managed --task-poll=15
+```
+
+在控制台「抓包任务」页建任务，用**标签选择器**分发：任务的标签是探针注册时 Labels 的子集即被该探针领取（空选择器任意探针可领）。支持周期性（cron）。任务领取/心跳/完成全自动，结果按来源=agent 落清单。控制台「Agent / 探针」页可注册探针（拿一次性 apiKey）、看在线状态、撤销。

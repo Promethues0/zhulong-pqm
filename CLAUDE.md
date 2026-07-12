@@ -31,6 +31,7 @@ cd deploy && VERSION=1.0.0 ./package.sh     # 产出 tar.gz；目标机 sudo ./i
 - `backend/internal/cryptoref/` — **后量子识别引擎地基**：TLS 命名组码点表(named_groups)/PQC算法表(algorithms)/进程×加密库检测表(lib_detect)；码点权威·尺寸兜底·GREASE丢弃·EffectiveHNDL共享清除。数据源 `docs/superpowers/specs/2026-07-11-pqc-crypto-lib-research.md`
 - `backend/cmd/agent/` — **主机 Agent 二进制(M-C)**：纯Go免CGO单文件，进程×库/监听握手/磁盘证书/SSH主机密钥/内核算法+dpkg-rpm包五路发现；经 M-B 受限通道(X-Agent-Key)上报；**`--role=probe` 为分布式抓包探针(AF_PACKET/tcpdump→ParsePCAP→观测上报,M-D1)**。旧 `agent/zhulong-pqm-agent.sh` bash PoC 仍保留
 - `backend/internal/api/agents.go` + `model.Agent` — **M-B Agent身份**：注册→一次性apiKey→X-Agent-Key受限上报(/agent/assets/batch)，资产盖 ReportedBy 归属
+- `backend/internal/api/captures.go` + `model.CaptureTask` — **M-D2 抓包任务下发**：控制台建任务→标签选择器分发→探针拉取式租约(GET /agent/tasks+heartbeat+complete)+周期调度回收；前端 Agents.vue/CaptureTasks.vue 探针舰队管理
 - `docs/` — PRD.md、深化蓝图-R3.md、使用说明书.md、**主机Agent安装手册.md**、**deploy-10.50.93.20-runbook.md**、superpowers/{specs,plans}(PQC识别设计/M-A计划/字典附录)
 
 ## 关键约定
