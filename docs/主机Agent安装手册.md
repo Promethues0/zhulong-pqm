@@ -168,3 +168,30 @@ journalctl -u zhulong-pqm-agent.service --no-pager | tail   # 查看采集日志
 | 某库判成「同 soname 歧义/经典」 | 该 `.so` 里没扫到清晰版本串（如 `libcrypto.so.3` 未含 `OpenSSL 3.x` 字样）；保守判经典，可人工在清单里确认 |
 | 重复运行会不会刷重复资产 | 不会。网络端点按 host:port、证书按指纹、主机事实按 `Agent+名称+算法` 合成锚点去重，重复运行只更新 |
 | 自签演示环境 TLS 校验失败 | 加 `--insecure` |
+
+---
+
+## 8. 探针模式（role=probe，分布式抓包）
+
+同一二进制加 `--role=probe` 即变**旁路抓包探针**：在镜像口/SPAN 口实时抓包，边缘解析出 TLS+后量子观测上报，**只回传观测、不回传原始包**（省带宽+隐私）。
+
+```bash
+# 需 root 或 CAP_NET_RAW（AF_PACKET 原生抓包）；无权限自动回退宿主机 tcpdump
+sudo ZPQM_AGENT_SERVER=http://<平台>:8099 ZPQM_AGENT_KEY=zpqm-agent-.... \
+  ./zhulong-pqm-agent --role=probe --iface=eth0 --duration=60
+
+# 或授权后免 sudo：
+sudo setcap cap_net_raw+ep ./zhulong-pqm-agent
+```
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `--iface` | 全部/any | 抓哪张网卡（镜像口） |
+| `--duration` | 30 | 抓包时长（秒） |
+| `--max-packets` | 100000 | 抓包数上限 |
+| `--bpf` | `tcp` | tcpdump 回退时的过滤表达式 |
+| `--capture-mode` | `auto` | `auto`(AF_PACKET 优先→tcpdump 回退)/`afpacket`/`tcpdump` |
+
+常驻：`--interval 300` 每 5 分钟抓一轮。多探针=在各旁路点各部署一个 `--role=probe` 实例（各自注册取 Key）。到「密码使用点清单」按来源=agent 看，含协商组/后量子态。
+
+> 服务端集中下发抓包任务（按网段分发给多探针、租约领任务）是下一里程碑 M-D2；本版探针为配置驱动。

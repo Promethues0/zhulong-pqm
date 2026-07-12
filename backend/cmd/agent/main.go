@@ -24,6 +24,9 @@ func main() {
 	}
 
 	runOnce := func() error {
+		if cfg.Role == model.AgentKindProbe {
+			return runProbe(cfg) // 探针模式：抓包→边缘解析→上报
+		}
 		assets := gatherAssets(cfg)
 		fmt.Printf("发现完成：共 %d 条密码学使用点\n", len(assets))
 		return reportAssets(cfg, assets)
