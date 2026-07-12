@@ -230,6 +230,7 @@ const columns = [
   { title: '系统', dataIndex: 'system', width: 140, ellipsis: true, tooltip: true },
   { title: '层级', slotName: 'layer', width: 80 },
   { title: '算法', slotName: 'algorithm', width: 150 },
+  { title: '密钥交换', slotName: 'kex', width: 180 },
   { title: '暴露面', slotName: 'exposure', width: 90 },
   { title: '综合分', slotName: 'score', width: 90, align: 'center' as const },
   { title: '分级', slotName: 'level', width: 90, align: 'center' as const },
@@ -300,6 +301,11 @@ async function exportCbom() {
   } finally {
     exporting.value = false
   }
+}
+
+// 密钥交换安全态 → Arco 标签颜色（safe=green/hybrid=arcoblue/classical=orange/其他=gray）。
+function kexTagColor(s?: string): string {
+  return s === 'safe' ? 'green' : s === 'hybrid' ? 'arcoblue' : s === 'classical' ? 'orange' : 'gray'
 }
 
 function certColor(notAfter?: string | null): string {
@@ -489,7 +495,7 @@ onMounted(() => {
         :loading="loading"
         :pagination="{ pageSize: 12, showTotal: true, hideOnSinglePage: false }"
         row-key="id"
-        :scroll="{ x: 1020 }"
+        :scroll="{ x: 1200 }"
         @row-click="openDetail"
       >
         <template #name="{ record }">
@@ -501,6 +507,12 @@ onMounted(() => {
         <template #algorithm="{ record }">
           {{ record.algorithm || '—'
           }}<span v-if="record.keySize" class="dim"> / {{ record.keySize }}</span>
+        </template>
+        <template #kex="{ record }">
+          <a-tag v-if="record.kexGroup" :color="kexTagColor(record.kexSafety)" size="small">
+            {{ record.kexGroup }}
+          </a-tag>
+          <span v-else class="dim">—</span>
         </template>
         <template #exposure="{ record }">
           <a-tag :color="exposureMeta(record.exposure).color" size="small">

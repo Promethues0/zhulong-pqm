@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/db"
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scoring"
@@ -224,7 +225,7 @@ func (s *Server) recomputeAll(assets []model.CryptoAsset, w scoring.Weights,
 			a.RawScore = r.RawScore
 			a.RiskLevel = r.Level
 			a.RiskLevelText = r.LevelText
-			a.HNDL = r.HNDL
+			a.HNDL = cryptoref.EffectiveHNDL(r.HNDL, a.KexSafety) // KEX 已迁移→批量复算不复活 HNDL
 			if a.SuggestedAlgo == "" && a.Algorithm != "" {
 				a.SuggestedAlgo = scoring.SuggestAlgo(a.Algorithm)
 			}
@@ -396,7 +397,7 @@ func (s *Server) previewScoreProfile(c *gin.Context) {
 		if _, ok := after[r.Level]; ok {
 			after[r.Level]++
 		}
-		if r.HNDL {
+		if cryptoref.EffectiveHNDL(r.HNDL, a.KexSafety) { // 与 activate 落库口径一致
 			hndlAfter++
 		}
 		if a.RiskLevel != "" && a.RiskLevel != r.Level {

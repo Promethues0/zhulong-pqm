@@ -54,6 +54,14 @@ const (
 	ExposurePublic   = "public"
 )
 
+// 量子安全态（KexSafety/AuthSafety 取值）：纯 PQC / 经典+PQC 混合 / 纯经典 / 不适用。
+const (
+	KexSafetySafe      = "safe"
+	KexSafetyHybrid    = "hybrid"
+	KexSafetyClassical = "classical"
+	KexSafetyNA        = "na"
+)
+
 // ---- ① 发现深化（Wave B-1）常量 ----
 
 // 发现方式 M1-M7（FR-3.2/3.3，覆盖度矩阵列维）。
@@ -674,6 +682,12 @@ type CryptoAsset struct {
 
 	SuggestedAlgo string `json:"suggestedAlgo"` // 建议迁移目标算法
 
+	// 后量子双维建模（KEX 维 × 认证维），来源 cryptoref 分类。
+	KexGroup   string `json:"kexGroup"`   // 协商的密钥交换组规范名（X25519MLKEM768/curveSM2MLKEM768/x25519...）
+	KexSafety  string `json:"kexSafety"`  // 交换维安全态 safe/hybrid/classical/na
+	AuthSafety string `json:"authSafety"` // 认证维安全态 safe/hybrid/classical/na
+	ReportedBy string `json:"reportedBy"` // 上报来源 Agent/探针 ID（M-B 起用；本轮默认空）
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -761,6 +775,8 @@ type ScanResult struct {
 	KeyAlgo     string `json:"keyAlgo"`
 	KeySize     int    `json:"keySize"`
 	SigAlgo     string `json:"sigAlgo"`
+	KexGroup    string `json:"kexGroup"`  // 被动/主动观测到的密钥交换组规范名
+	KexSafety   string `json:"kexSafety"` // 观测层交换维安全态（权威，优先于按组名反查；FIX 2）
 
 	CertSubject     string     `json:"certSubject"`
 	CertIssuer      string     `json:"certIssuer"`

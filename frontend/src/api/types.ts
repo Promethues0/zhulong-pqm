@@ -60,6 +60,12 @@ export interface CryptoAsset {
 
   suggestedAlgo: string
 
+  // 后量子双维建模（KEX 维 × 认证维），来源 cryptoref 分类（M-A 起后端下发）。
+  kexGroup?: string
+  kexSafety?: 'safe' | 'hybrid' | 'classical' | 'na'
+  authSafety?: 'safe' | 'hybrid' | 'classical' | 'na'
+  reportedBy?: string
+
   createdAt?: string
   updatedAt?: string
 }

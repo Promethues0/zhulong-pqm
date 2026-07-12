@@ -224,3 +224,23 @@ func TestDeriveD1(t *testing.T) {
 		}
 	}
 }
+
+func TestDeriveD1_PQCBranch(t *testing.T) {
+	cases := []struct {
+		name string
+		in   DeriveInput
+		want int
+	}{
+		{"纯PQC双safe", DeriveInput{KexSafety: "safe", AuthSafety: "safe"}, 10},
+		{"混合KEX+safe认证", DeriveInput{KexSafety: "hybrid", AuthSafety: "safe"}, 15},
+		{"混合KEX+经典ECDSA认证", DeriveInput{KexSafety: "hybrid", AuthSafety: "classical", Algorithm: "ECDSA"}, 70},
+		{"混合KEX+经典RSA认证", DeriveInput{KexSafety: "hybrid", AuthSafety: "classical", Algorithm: "RSA"}, 90},
+		{"无安全态回退RSA", DeriveInput{Algorithm: "RSA"}, 90},
+		{"无安全态回退弱RSA", DeriveInput{Algorithm: "RSA", KeySize: 1024}, 100},
+	}
+	for _, c := range cases {
+		if got := deriveD1(c.in); got != c.want {
+			t.Errorf("%s: deriveD1 = %d, want %d", c.name, got, c.want)
+		}
+	}
+}

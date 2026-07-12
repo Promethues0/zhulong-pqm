@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/db"
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scoring"
@@ -202,7 +203,7 @@ func (s *Server) recompute(a *model.CryptoAsset) {
 	a.RawScore = r.RawScore
 	a.RiskLevel = r.Level
 	a.RiskLevelText = r.LevelText
-	a.HNDL = r.HNDL
+	a.HNDL = cryptoref.EffectiveHNDL(r.HNDL, a.KexSafety) // KEX 已迁移→手工评分不复活 HNDL
 	if a.SuggestedAlgo == "" && a.Algorithm != "" {
 		a.SuggestedAlgo = scoring.SuggestAlgo(a.Algorithm)
 	}

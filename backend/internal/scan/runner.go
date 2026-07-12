@@ -13,6 +13,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scoring"
 )
@@ -343,6 +344,7 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 	}
 
 	layer := model.LayerL2 // 证书导入归 L2 协议/传输层（PKI）
+	authSafety := cryptoref.AuthSafetyForAlgo(res.KeyAlgo)
 	dims := scoring.Derive(scoring.DeriveInput{
 		Algorithm:  res.KeyAlgo,
 		KeySize:    res.KeySize,
@@ -350,6 +352,7 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 		Exposure:   exposure,
 		Layer:      layer,
 		LongLived:  certLongLived(res.CertNotAfter),
+		AuthSafety: authSafety,
 	})
 	result := scoring.Score(dims)
 
@@ -372,7 +375,10 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 		a.RawScore = result.RawScore
 		a.RiskLevel = result.Level
 		a.RiskLevelText = result.LevelText
-		a.HNDL = result.HNDL
+		a.AuthSafety = authSafety
+		// 证书导入不带 KEX 观测（a.KexSafety 新资产为空→行为不变）；按证书指纹合并到
+		// 已有混合 KEX 资产时，沿用资产自身的 KexSafety 保持 HNDL 清除不回退。
+		a.HNDL = cryptoref.EffectiveHNDL(result.HNDL, a.KexSafety)
 		a.SuggestedAlgo = scoring.SuggestAlgo(res.KeyAlgo)
 		a.RiskHint = fmt.Sprintf("%s 综合风险 %d(%s) 建议迁移窗口 %s",
 			res.KeyAlgo, result.Score, result.LevelText, result.Window)
@@ -407,6 +413,22 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 	}
 	endpoint := fmt.Sprintf("%s:%d", res.Host, res.Port)
 
+	// 先加载既有资产：跨源合并要用既有 PQC 观测参与 effective 值解析，再算分（FIX 4）。
+	var asset model.CryptoAsset
+	err := r.db.Where("endpoint = ?", endpoint).First(&asset).Error
+
+	// effective KEX 字段：本次结果观测到组则用之；未观测（M1 主动扫描器不带组信息）
+	// 则保留既有资产的被动/主动发现，避免主动重扫抹除 M2 被动观测（同 CertFingerprint 保护模式）。
+	effKexGroup, effKexSafety := res.KexGroup, res.KexSafety
+	if effKexGroup == "" && err == nil && asset.KexGroup != "" {
+		effKexGroup, effKexSafety = asset.KexGroup, asset.KexSafety
+	}
+	// 观测层的 KexSafety 判定权威（码点+尺寸兜底在观测处已定），名字反查仅作未提供时的兜底——
+	// 否则 "unknown-" 前缀的保守 hybrid 兜底会把观测为 classical 的端点跨 ScanResult 升级成 hybrid。
+	if effKexSafety == "" {
+		effKexSafety = cryptoref.SafetyForGroupName(effKexGroup) // 空组 → na
+	}
+	authSafety := cryptoref.AuthSafetyForAlgo(res.KeyAlgo)
 	dims := scoring.Derive(scoring.DeriveInput{
 		Algorithm:  res.KeyAlgo,
 		KeySize:    res.KeySize,
@@ -414,11 +436,10 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 		Exposure:   exposure,
 		Layer:      model.LayerL1, // 扫描发现默认归为 L1 应用/会话层
 		LongLived:  certLongLived(res.CertNotAfter),
+		KexSafety:  effKexSafety, // D1 与最终写入的 KexSafety 一致
+		AuthSafety: authSafety,
 	})
 	result := scoring.Score(dims)
-
-	var asset model.CryptoAsset
-	err := r.db.Where("endpoint = ?", endpoint).First(&asset).Error
 
 	apply := func(a *model.CryptoAsset) {
 		a.Name = res.CertSubject
@@ -442,7 +463,10 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 		a.RawScore = result.RawScore
 		a.RiskLevel = result.Level
 		a.RiskLevelText = result.LevelText
-		a.HNDL = result.HNDL
+		a.KexGroup = effKexGroup
+		a.KexSafety = effKexSafety
+		a.AuthSafety = authSafety // 认证维每次按本结果证书算法更新（主动扫描可观测变化）
+		a.HNDL = cryptoref.EffectiveHNDL(result.HNDL, effKexSafety) // KEX 已迁移→清 HNDL（共享策略）
 		a.SuggestedAlgo = scoring.SuggestAlgo(res.KeyAlgo)
 		a.RiskHint = fmt.Sprintf("%s/%s 综合风险 %d(%s) 建议迁移窗口 %s",
 			res.KeyAlgo, res.TLSVersion, result.Score, result.LevelText, result.Window)

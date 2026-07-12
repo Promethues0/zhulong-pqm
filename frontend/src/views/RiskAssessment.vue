@@ -65,6 +65,24 @@ function optionsFor(key: DimKey) {
   return options.value?.[key] ?? []
 }
 
+// 密钥交换 / 认证维安全态 → Arco 标签颜色（safe=green/hybrid=arcoblue/classical=orange/其他=gray）。
+function kexTagColor(s?: string): string {
+  return s === 'safe' ? 'green' : s === 'hybrid' ? 'arcoblue' : s === 'classical' ? 'orange' : 'gray'
+}
+
+function safetyText(s?: string): string {
+  return (
+    { safe: '后量子安全', hybrid: '混合过渡', classical: '经典（待迁移）', na: '不适用' }[
+      s || 'na'
+    ] || '—'
+  )
+}
+
+// HNDL 是否已因密钥交换维完成迁移而缓解（交换维已是 safe/hybrid）。
+const kexMitigatesHndl = computed(
+  () => selectedAsset.value?.kexSafety === 'safe' || selectedAsset.value?.kexSafety === 'hybrid',
+)
+
 function applyAssetDims(a: CryptoAsset) {
   dims.d1 = a.d1 ?? 0
   dims.d2 = a.d2 ?? 0
@@ -262,10 +280,22 @@ onMounted(loadAll)
               <a-tag :color="levelColor(liveLevel)" size="large" bordered>
                 {{ liveLevel }} · {{ levelText(liveLevel) }}
               </a-tag>
-              <a-tag v-if="liveHndl" color="red" size="large">HNDL</a-tag>
+              <a-tag v-if="liveHndl && kexMitigatesHndl" color="green" size="large">
+                HNDL 已缓解（KEX 已迁移）
+              </a-tag>
+              <a-tag v-else-if="liveHndl" color="red" size="large">HNDL</a-tag>
             </div>
             <div v-if="selectedAsset" class="live-asset">
               当前：{{ selectedAsset.name }}
+            </div>
+            <div v-if="selectedAsset" class="kex-safety-row">
+              <a-tag size="small" :color="kexTagColor(selectedAsset.kexSafety)">
+                密钥交换维：{{ safetyText(selectedAsset.kexSafety) }}
+                <span v-if="selectedAsset.kexGroup" class="opt-sub">（{{ selectedAsset.kexGroup }}）</span>
+              </a-tag>
+              <a-tag size="small" :color="kexTagColor(selectedAsset.authSafety)">
+                认证维：{{ safetyText(selectedAsset.authSafety) }}
+              </a-tag>
             </div>
             <a-button
               type="primary"
@@ -388,6 +418,13 @@ onMounted(loadAll)
   margin-top: 12px;
   font-size: 12px;
   color: var(--brand-text-soft);
+}
+.kex-safety-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .sum-grid {

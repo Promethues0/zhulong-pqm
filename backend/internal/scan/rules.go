@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/model"
 )
 
@@ -62,8 +63,10 @@ func MatchRules(res *model.ScanResult, method string) []model.RuleHit {
 			fmt.Sprintf("TLS Version: %s", res.TLSVersion), method))
 	}
 
-	// R-L1-02：经典 KEX（RSA/ECDH/DHE，混合 X25519MLKEM768 等不命中）。
-	if isClassicKEX(cipher, keyAlgo) {
+	// R-L1-02：经典 KEX（RSA/ECDH/DHE）。协商组已观测为混合/纯 PQC（res.KexGroup，
+	// 被动 M2/主动枚举带出）则 KEX 维已迁移，即便证书是 RSA(KeyAlgo 含经典 token)也不命中——
+	// 否则 Go1.24 crypto/tls 静默协商 X25519MLKEM768 的服务器会被 RSA 证书误报经典 KEX。
+	if isClassicKEX(cipher, keyAlgo) && !kexMigrated(res) {
 		hits = append(hits, hit("R-L1-02", model.ConfHigh,
 			fmt.Sprintf("KEX/CipherSuite: %s (KeyAlgo %s)", res.CipherSuite, res.KeyAlgo), method))
 	}
@@ -77,8 +80,23 @@ func MatchRules(res *model.ScanResult, method string) []model.RuleHit {
 	return hits
 }
 
+// kexMigrated 该结果观测到的协商组是否已迁移（混合/纯 PQC）。
+// 观测层 KexSafety 权威（FIX 2 口径），未提供时按组名反查；未观测组（空）返回 false，
+// 经典端点的 R-L1-02 命中不受影响。
+func kexMigrated(res *model.ScanResult) bool {
+	s := res.KexSafety
+	if s == "" {
+		s = cryptoref.SafetyForGroupName(res.KexGroup) // 空组 → na
+	}
+	return s == cryptoref.SafetyHybrid || s == cryptoref.SafetySafe
+}
+
 // isClassicKEX 判断套件/公钥算法属于经典（非混合/非 PQC）密钥协商。
 func isClassicKEX(cipher, keyAlgo string) bool {
+	// 组名本身是混合/PQC（cryptoref 认识的规范名）→ 直接非经典。
+	if s := cryptoref.SafetyForGroupName(cipher); s == cryptoref.SafetyHybrid || s == cryptoref.SafetySafe {
+		return false
+	}
 	hay := cipher + " " + keyAlgo
 	// 混合/后量子标识：命中则不算经典。
 	for _, pq := range []string{"MLKEM", "ML-KEM", "KYBER", "X25519MLKEM", "KE1_MLKEM", "MLDSA", "ML-DSA"} {
@@ -173,6 +191,9 @@ func MatchSBOMRules(name, version string, supportsMLKEM bool) []model.RuleHit {
 
 // isClassicSig 判断证书签名算法属于经典量子脆弱签名。
 func isClassicSig(sig string) bool {
+	if cryptoref.AuthSafetyForAlgo(sig) != cryptoref.SafetyClassical {
+		return false
+	}
 	for _, pq := range []string{"MLDSA", "ML-DSA", "DILITHIUM", "SPHINCS", "FALCON"} {
 		if strings.Contains(sig, pq) {
 			return false

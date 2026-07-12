@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/db"
 	"zhulong-pqm/internal/model"
 	"zhulong-pqm/internal/scoring"
@@ -29,7 +30,7 @@ func Reassess(gdb *gorm.DB, assetID uint, changedBy, reasonDetail string) (*mode
 	a.RawScore = r.RawScore
 	a.RiskLevel = r.Level
 	a.RiskLevelText = r.LevelText
-	a.HNDL = r.HNDL
+	a.HNDL = cryptoref.EffectiveHNDL(r.HNDL, a.KexSafety) // KEX 已迁移→复评不复活 HNDL
 
 	// 2) 资产经状态机白名单回退到复评态（reassessing）。非法迁移则保持原态、不报错（诚实降级）。
 	if model.AssetTransitionAllowed(a.Status, model.StatusReassessing) {
