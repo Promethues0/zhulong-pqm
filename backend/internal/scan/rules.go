@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/model"
 )
 
@@ -79,6 +80,10 @@ func MatchRules(res *model.ScanResult, method string) []model.RuleHit {
 
 // isClassicKEX 判断套件/公钥算法属于经典（非混合/非 PQC）密钥协商。
 func isClassicKEX(cipher, keyAlgo string) bool {
+	// 组名本身是混合/PQC（cryptoref 认识的规范名）→ 直接非经典。
+	if s := cryptoref.SafetyForGroupName(cipher); s == cryptoref.SafetyHybrid || s == cryptoref.SafetySafe {
+		return false
+	}
 	hay := cipher + " " + keyAlgo
 	// 混合/后量子标识：命中则不算经典。
 	for _, pq := range []string{"MLKEM", "ML-KEM", "KYBER", "X25519MLKEM", "KE1_MLKEM", "MLDSA", "ML-DSA"} {
@@ -173,6 +178,9 @@ func MatchSBOMRules(name, version string, supportsMLKEM bool) []model.RuleHit {
 
 // isClassicSig 判断证书签名算法属于经典量子脆弱签名。
 func isClassicSig(sig string) bool {
+	if cryptoref.AuthSafetyForAlgo(sig) != cryptoref.SafetyClassical {
+		return false
+	}
 	for _, pq := range []string{"MLDSA", "ML-DSA", "DILITHIUM", "SPHINCS", "FALCON"} {
 		if strings.Contains(sig, pq) {
 			return false
