@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { dashboardApi, scoreApi, remediationApi, monitorApi, coverageApi, trendApi, deviceApi } from '@/api'
+import { dashboardApi, scoreApi, remediationApi, monitorApi, coverageApi, trendApi, deviceApi, assetApi } from '@/api'
 import type {
   Dashboard,
   ScoreSummary,
@@ -11,6 +11,7 @@ import type {
   TrendResp,
   RemediationTask,
   Device,
+  CryptoAsset,
 } from '@/api/types'
 
 const router = useRouter()
@@ -24,10 +25,11 @@ const cov = ref<Coverage | null>(null)
 const trend = ref<TrendResp | null>(null)
 const remList = ref<RemediationTask[]>([])
 const devices = ref<Device[]>([])
+const assets = ref<CryptoAsset[]>([])
 const updatedAt = ref('')
 
 async function fetchAll() {
-  const [d, s, r, m, c, t, rl, dv] = await Promise.allSettled([
+  const [d, s, r, m, c, t, rl, dv, av] = await Promise.allSettled([
     dashboardApi.get(),
     scoreApi.summary(),
     remediationApi.summary(),
@@ -36,6 +38,7 @@ async function fetchAll() {
     trendApi.get(14),
     remediationApi.list(),
     deviceApi.list(),
+    assetApi.list(),
   ])
   if (d.status === 'fulfilled') dash.value = d.value
   if (s.status === 'fulfilled') score.value = s.value
@@ -45,6 +48,7 @@ async function fetchAll() {
   if (t.status === 'fulfilled') trend.value = t.value
   if (rl.status === 'fulfilled') remList.value = Array.isArray(rl.value) ? rl.value : []
   if (dv.status === 'fulfilled') devices.value = Array.isArray(dv.value) ? dv.value : []
+  if (av.status === 'fulfilled') assets.value = Array.isArray(av.value) ? av.value : []
   updatedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
   animateHeadline()
 }
@@ -152,6 +156,15 @@ const layers = computed(() => {
   const max = Math.max(1, ...items.map((i) => i.v))
   const blues = ['#4080ff', '#3b9dff', '#22d3ee', '#165dff']
   return items.map((i, idx) => ({ ...i, pct: Math.round((i.v / max) * 100), c: blues[idx] }))
+})
+
+// ---- PQC 迁移分布（密钥交换维：经典/半迁移(hybrid)/全迁移(safe)，前端按已加载资产聚合） ----
+const migrationDist = computed(() => {
+  const all = assets.value || []
+  const safe = all.filter((a) => a.kexSafety === 'safe').length
+  const hybrid = all.filter((a) => a.kexSafety === 'hybrid').length
+  const classical = all.length - safe - hybrid
+  return { safe, hybrid, classical, total: all.length }
 })
 
 // ---- 五阶段闭环 ----
@@ -499,6 +512,24 @@ function fmtInt(v: number) {
               <div class="kpi">
                 <div class="kv">{{ fmtInt(disp.avg) }}</div>
                 <div class="kl">平均风险分</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="p-title">PQC 迁移分布（密钥交换维）</div>
+            <div class="compliance">
+              <div class="cmp-cell">
+                <div class="cmp-v" style="color: #ff9f45">{{ migrationDist.classical }}</div>
+                <div class="cmp-l">经典（待迁移）</div>
+              </div>
+              <div class="cmp-cell">
+                <div class="cmp-v" style="color: #22d3ee">{{ migrationDist.hybrid }}</div>
+                <div class="cmp-l">半迁移（混合）</div>
+              </div>
+              <div class="cmp-cell">
+                <div class="cmp-v" style="color: #3fd08a">{{ migrationDist.safe }}</div>
+                <div class="cmp-l">全迁移（PQC）</div>
               </div>
             </div>
           </div>
