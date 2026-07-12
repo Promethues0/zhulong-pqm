@@ -16,6 +16,13 @@ type Config struct {
 	FSRoot   string // 发现根目录，默认 "/"；容器/测试注入 fixture 目录
 	SSHDir   string // SSH 主机密钥目录，默认 /etc/ssh
 	Insecure bool   // 跳过服务器 TLS 证书校验（自签名场景）
+
+	// 探针模式（role=probe）配置
+	Iface       string // 抓包网卡，空=全部/any
+	Duration    int    // 抓包时长（秒）
+	MaxPackets  int    // 抓包数上限
+	BPF         string // tcpdump 回退时的 BPF 过滤表达式
+	CaptureMode string // auto/afpacket/tcpdump
 }
 
 // envOr 取环境变量，缺省时回落 def。
@@ -78,6 +85,11 @@ func loadConfig(args []string) (Config, error) {
 	fs.StringVar(&cfg.FSRoot, "fsroot", envOr("ZPQM_AGENT_FSROOT", "/"), "发现根目录（测试/容器注入 fixture 目录）")
 	fs.StringVar(&cfg.SSHDir, "ssh-dir", envOr("ZPQM_AGENT_SSH_DIR", "/etc/ssh"), "SSH 主机密钥目录")
 	fs.BoolVar(&cfg.Insecure, "insecure", envBoolOr("ZPQM_AGENT_INSECURE", false), "跳过平台 TLS 证书校验（自签名场景）")
+	fs.StringVar(&cfg.Iface, "iface", envOr("ZPQM_AGENT_IFACE", ""), "探针抓包网卡（空=全部/any）")
+	fs.IntVar(&cfg.Duration, "duration", envIntOr("ZPQM_AGENT_DURATION", 30), "探针抓包时长（秒）")
+	fs.IntVar(&cfg.MaxPackets, "max-packets", envIntOr("ZPQM_AGENT_MAX_PACKETS", 100000), "探针抓包数上限")
+	fs.StringVar(&cfg.BPF, "bpf", envOr("ZPQM_AGENT_BPF", "tcp"), "tcpdump 回退时的 BPF 过滤表达式")
+	fs.StringVar(&cfg.CaptureMode, "capture-mode", envOr("ZPQM_AGENT_CAPTURE_MODE", "auto"), "抓包机制：auto/afpacket/tcpdump")
 
 	if err := fs.Parse(args); err != nil {
 		return cfg, err
