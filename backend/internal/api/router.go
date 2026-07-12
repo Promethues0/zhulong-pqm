@@ -3,6 +3,9 @@ package api
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -246,5 +249,45 @@ func (s *Server) Router() *gin.Engine {
 	// 改密：admin 或本人，handler 内部二次判定（故挂 auth 而非 adminGrp）。
 	auth.POST("/users/:id/password", s.changePassword)
 
+	// 前端自服务（免 nginx 单机部署，如内网 10.50.93.20）：配置 ZPQM_STATIC_DIR 时，
+	// 后端直接托管 dist/ 并对非 /api 路由做 SPA 回退到 index.html。
+	if s.cfg.StaticDir != "" {
+		s.serveStatic(r, s.cfg.StaticDir)
+	}
+
 	return r
+}
+
+// serveStatic 托管前端 dist。dist 由 vite `base:'/pqm/'` 构建（与云端 nginx 的 /pqm/ 子路径同构）：
+// 资产引用 `/pqm/assets/*`、Vue 路由 BASE_URL=`/pqm/`。故后端也在 `/pqm/` 下托管，并把 `/` 重定向到 `/pqm/`。
+// 非 /api、非 /pqm 的路径一律重定向进 /pqm/（保留原路径，便于直接敲 /screen 等深链）。
+func (s *Server) serveStatic(r *gin.Engine, dir string) {
+	index := filepath.Join(dir, "index.html")
+	r.Static("/pqm/assets", filepath.Join(dir, "assets"))
+	r.NoRoute(func(c *gin.Context) {
+		p := c.Request.URL.Path
+		if strings.HasPrefix(p, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		if strings.HasPrefix(p, "/pqm/") || p == "/pqm" {
+			// /pqm/ 下的真实静态文件（如 favicon）优先命中，否则 SPA 回退 index.html。
+			if rel := strings.TrimPrefix(p, "/pqm/"); rel != "" && rel != "pqm" {
+				if f := filepath.Join(dir, filepath.Clean(rel)); strings.HasPrefix(f, dir) {
+					if st, err := os.Stat(f); err == nil && !st.IsDir() {
+						c.File(f)
+						return
+					}
+				}
+			}
+			c.File(index)
+			return
+		}
+		// 根与其它路径 → 归一进 /pqm/（保留子路径）。
+		target := "/pqm" + p
+		if p == "/" {
+			target = "/pqm/"
+		}
+		c.Redirect(http.StatusFound, target)
+	})
 }

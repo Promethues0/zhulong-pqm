@@ -319,6 +319,7 @@ export interface RemediationInput {
   track: string
   targetAlgo?: string
   deviceId: number
+  allowWrite?: boolean
 }
 
 /** 改造工单汇总 */

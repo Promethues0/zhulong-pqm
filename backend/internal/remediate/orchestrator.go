@@ -74,6 +74,8 @@ func (o *Orchestrator) Run(ctx context.Context, taskID uint) {
 		o.fail(&task, "执行设备不存在")
 		return
 	}
+	// 反序列化能力清单（keyslot:N / tlspin:<sha256>），供 PQC 编排取 TLS 钉扎与槽位。
+	device.Capabilities = unmarshalCaps(device.CapabilitiesJSON)
 
 	// 第一步固定为连通性校验：真实探测设备，记录时延并落库设备状态。
 	online := o.runConnectivity(ctx, &task, &device)
@@ -171,12 +173,83 @@ func (o *Orchestrator) runAction(task *model.RemediationTask, device *model.Devi
 		return
 	}
 
+	// 密码机 / 签名机的 PQC 写操作：需在线 + 工单显式 AllowWrite 才真调，否则模拟（不触碰真实设备）。
+	if isHSMPQC(device, step.Name) || isSignServerPQC(device, step.Name) {
+		o.runPQCWrite(task, device, step, online)
+		return
+	}
+
 	if online {
 		step.Status = model.StepDone
 		step.Detail = actionDetail(step.Name)
 	} else {
 		step.Status = model.StepSimulated
 		step.Detail = "设备离线，步骤模拟执行"
+	}
+}
+
+// runPQCWrite 执行密码机/签名机的后量子编排写操作，带三重闸门：离线→模拟、未授权写→模拟、真调失败→诚实降级。
+// 只有「在线 + AllowWrite=true + 真调成功」才置 done 并写真实证据（mode=hsm-real/signserver-real）。
+func (o *Orchestrator) runPQCWrite(task *model.RemediationTask, device *model.Device, step *model.Step, online bool) {
+	if !online {
+		step.Status = model.StepSimulated
+		step.Detail = "设备离线，PQC 编排模拟执行"
+		return
+	}
+	if !task.AllowWrite {
+		step.Status = model.StepSimulated
+		step.Detail = "未勾选『允许写入』，PQC 编排模拟执行（不触碰真实设备）"
+		return
+	}
+	var ev map[string]string
+	var err error
+	pin := tlsPinFrom(device.Capabilities)
+	if isHSMPQC(device, step.Name) {
+		ev, err = PushHSMAigisSelfTest(device.Endpoint, pin)
+	} else {
+		ev, err = PushSignServerMLDSASelfTest(device.Endpoint, secret.Decrypt(o.tokenKey, device.Token), pin)
+	}
+	if err == nil {
+		step.Status = model.StepDone
+		step.Detail = pqcDetail(device.Type, ev)
+		if task.Evidence == nil {
+			task.Evidence = map[string]string{}
+		}
+		for k, v := range ev {
+			task.Evidence[k] = v
+		}
+		return
+	}
+	// 诚实降级：真实 PQC 编排失败，不谎报 done。
+	step.Status = model.StepSimulated
+	step.Detail = "PQC 真实编排失败，降级模拟：" + err.Error()
+}
+
+// isHSMPQC 判断是否为「在线密码机 + 生成密钥对那步」——触发 Aigis-sig 后量子签名自检。
+func isHSMPQC(device *model.Device, stepName string) bool {
+	if device == nil || device.Type != model.DeviceHSM || strings.TrimSpace(device.Endpoint) == "" {
+		return false
+	}
+	return strings.Contains(stepName, "密钥对")
+}
+
+// isSignServerPQC 判断是否为「在线签名机 + 双签名那步」——触发 ML-DSA(Dilithium) 后量子签名自检。
+func isSignServerPQC(device *model.Device, stepName string) bool {
+	if device == nil || device.Type != model.DeviceSignServer || strings.TrimSpace(device.Endpoint) == "" {
+		return false
+	}
+	return strings.Contains(stepName, "双签名")
+}
+
+// pqcDetail 据设备类型与证据生成步骤明细。
+func pqcDetail(deviceType string, ev map[string]string) string {
+	switch deviceType {
+	case model.DeviceHSM:
+		return "已在密码机编排 Aigis-sig 后量子签名自检（生成密钥对→签名→验签通过，" + ev["keyIndex"] + " 槽）"
+	case model.DeviceSignServer:
+		return "已在签名机编排 " + ev["pqc-algo"] + " 后量子签名自检（生成密钥对→签名→验签通过）"
+	default:
+		return "PQC 编排完成"
 	}
 }
 
@@ -363,6 +436,15 @@ func marshalEvidence(m map[string]string) string {
 func unmarshalEvidence(s string) map[string]string {
 	out := map[string]string{}
 	_ = json.Unmarshal([]byte(s), &out)
+	return out
+}
+
+// unmarshalCaps 反序列化设备能力清单 JSON（keyslot:N / tlspin:<sha256> 等）。
+func unmarshalCaps(s string) []string {
+	var out []string
+	if strings.TrimSpace(s) != "" {
+		_ = json.Unmarshal([]byte(s), &out)
+	}
 	return out
 }
 

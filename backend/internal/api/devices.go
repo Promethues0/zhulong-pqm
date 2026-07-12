@@ -180,7 +180,10 @@ func (s *Server) testDevice(c *gin.Context) {
 		return
 	}
 
-	res := remediate.Probe(context.Background(), dev.Endpoint)
+	dev.Capabilities = db.UnmarshalStrings(dev.CapabilitiesJSON)
+	token := s.decToken(dev.Token)
+	// 按设备类型只读发现（hsm→健康+公钥盘点，sign-server→服务器证书，其余→通用连通性探测）。
+	res := remediate.DiscoverDevice(context.Background(), &dev, token)
 
 	now := time.Now()
 	dev.LatencyMs = res.LatencyMs
@@ -190,12 +193,27 @@ func (s *Server) testDevice(c *gin.Context) {
 	} else {
 		dev.Status = model.DeviceStatusOffline
 	}
+	// 只读发现到的算法能力并入 Capabilities（去重，保留用户配置的 keyslot:N）。
+	if len(res.Algorithms) > 0 {
+		dev.Capabilities = remediate.MergeCaps(dev.Capabilities, res.Algorithms)
+		dev.CapabilitiesJSON = db.MarshalStrings(dev.Capabilities)
+	}
 	s.db.Save(&dev)
+
+	// ②建档：把只读发现到的公钥/证书登记成 CBOM 资产（幂等），喂给评估/大屏真实数据流。
+	registered := 0
+	if len(res.Assets) > 0 {
+		registered = s.registerDiscoveredAssets(&dev, res)
+	}
 
 	s.audit(c, "device", "device.test", auditTarget("Device", dev.ID, dev.Name), model.AuditSuccess, dev.Status+" "+res.Detail)
 	c.JSON(http.StatusOK, gin.H{
-		"status":    dev.Status,
-		"latencyMs": dev.LatencyMs,
-		"detail":    res.Detail,
+		"status":         dev.Status,
+		"latencyMs":      dev.LatencyMs,
+		"detail":         res.Detail,
+		"algorithms":     res.Algorithms,
+		"assets":         len(res.Assets),
+		"assetsNew":      registered,
+		"assetsRegistered": len(res.Assets),
 	})
 }

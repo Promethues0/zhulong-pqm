@@ -152,9 +152,14 @@ const (
 // 改造执行设备类型。
 const (
 	DeviceGateway = "gateway"
-	DeviceHSM     = "hsm"
+	DeviceHSM     = "hsm" // 安恒服务器密码机 REST openApi(9090/9443)：SM 全家桶 + PQC(Aigis-sig)
 	DeviceCA      = "ca"
 	DeviceProxy   = "proxy"
+	// DeviceSignServer 安恒签名验签(+时间戳二合一)服务器：SM2/RSA + 标准 PQC(ML-DSA/FN-DSA/SLH-DSA)。
+	// 信封 {respond:{respValue,data,message}}（respValue==0 成功），全 POST，无 GET，路径前缀 /tsvsopenapi。
+	DeviceSignServer = "sign-server"
+	// DeviceCryptoPlatform 密码服务管理平台：多台密码机/签名机的集中纳管父节点（占位，暂不实现独立适配器）。
+	DeviceCryptoPlatform = "crypto-platform"
 )
 
 // 设备在线状态。
@@ -840,6 +845,10 @@ type RemediationTask struct {
 
 	Status   string `gorm:"default:planned" json:"status"` // planned/running/done/failed/rolledback
 	Progress int    `json:"progress"`                      // 0-100
+
+	// AllowWrite 显式授权对真实密码设备执行写操作（建密钥/PQC 签名等）。默认 false=只模拟，
+	// 前端建单勾选后才为 true，编排器仅在 true 时真调 HSM/签名机 PQC 接口（[[改造闸门]]）。
+	AllowWrite bool `gorm:"default:false" json:"allowWrite"`
 
 	StepsJSON string `gorm:"column:steps;type:text" json:"-"` // JSON 序列化的 []Step
 	Steps     []Step `gorm:"-" json:"steps"`                  // 反序列化后的步骤清单

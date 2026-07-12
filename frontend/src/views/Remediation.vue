@@ -220,6 +220,7 @@ const form = reactive({
   track: '',
   targetAlgo: '',
   deviceId: undefined as number | undefined,
+  allowWrite: false, // 改造闸门：默认模拟，勾选后才对真实密码设备执行 PQC 写操作
 })
 
 const selectedPlaybook = computed(() =>
@@ -252,6 +253,7 @@ function openCreate(prefill?: { assetId?: number; assetName?: string; algo?: str
   form.targetAlgo = prefill?.algo ?? ''
   form.track = prefill?.algo ? guessTrack(prefill.algo) : ''
   form.deviceId = undefined
+  form.allowWrite = false // 每次打开默认回到「模拟」，写操作须显式重新勾选
   // 预填轨道后，若目标算法仍空，则用轨道默认值补齐。
   if (form.track && !form.targetAlgo) {
     const pb = playbooks.value.find((p) => p.key === form.track)
@@ -282,6 +284,7 @@ async function submitCreate() {
     track: form.track,
     deviceId,
     targetAlgo: form.targetAlgo || undefined,
+    allowWrite: form.allowWrite,
   }
   if (form.assetMode === 'select' && form.assetId != null) {
     payload.assetId = form.assetId
@@ -841,6 +844,21 @@ onBeforeUnmount(stopPoll)
             allow-clear
           />
         </a-form-item>
+
+        <a-form-item label="执行模式">
+          <a-checkbox v-model="form.allowWrite">
+            允许对真实密码设备执行写操作（PQC 编排真调）
+          </a-checkbox>
+          <div class="field-hint" :class="{ 'hint-warn': form.allowWrite }">
+            <template v-if="form.allowWrite">
+              ⚠ 已授权写入：编排到密码机 / 签名机的步骤将<b>真实调用</b>后量子接口（如密码机
+              Aigis-sig 生成密钥+签名验签、签名机 ML-DSA 签名验签）。仅对你确实纳管、可承受写入的设备勾选。
+            </template>
+            <template v-else>
+              默认<b>模拟</b>执行：不触碰真实设备的写接口，仅记录预期步骤与证据（安全预演）。
+            </template>
+          </div>
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -912,6 +930,13 @@ onBeforeUnmount(stopPoll)
   font-size: 12px;
   color: var(--brand-text-soft);
   margin-top: 6px;
+}
+.field-hint.hint-warn {
+  color: #d25f00;
+  background: rgba(210, 95, 0, 0.06);
+  border: 1px solid rgba(210, 95, 0, 0.25);
+  border-radius: 6px;
+  padding: 6px 8px;
 }
 
 /* 摘要小卡 */

@@ -67,7 +67,7 @@ var playbooks = []Playbook{
 	{
 		Key:        "code-signing",
 		Name:       "代码签名双签名",
-		DeviceType: "ca",
+		DeviceType: "sign-server", // 签名机执行 ML-DSA(Dilithium) 后量子签名（原 ca 占位，改指真实签名验签服务器）
 		TargetAlgo: "RSA+ML-DSA-87",
 		Steps: []string{
 			"代码签名基础设施审计",

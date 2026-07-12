@@ -20,6 +20,8 @@ type Config struct {
 	TLCPCertDir string // 国密 TLCP SM2 双证目录（自动生成）
 
 	EncryptionKey string // 设备凭据静态加密密钥（空=从 JWT 密钥派生）
+
+	StaticDir string // 前端 dist 目录（非空时后端自服务前端 + SPA 回退，免 nginx 单机部署用）
 }
 
 // Load 从环境变量加载配置，未设置时回落到约定的默认值。
@@ -51,6 +53,8 @@ func Load() *Config {
 		TLCPCertDir: envOr("ZPQM_TLCP_CERT_DIR", "./tlcp"),
 
 		EncryptionKey: strings.TrimSpace(os.Getenv("ZPQM_ENCRYPTION_KEY")),
+
+		StaticDir: strings.TrimSpace(os.Getenv("ZPQM_STATIC_DIR")),
 	}
 }
 

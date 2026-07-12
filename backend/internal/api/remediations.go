@@ -55,6 +55,7 @@ type createRemediationReq struct {
 	Track      string `json:"track" binding:"required"`
 	TargetAlgo string `json:"targetAlgo"`
 	DeviceID   *uint  `json:"deviceId"`
+	AllowWrite bool   `json:"allowWrite"` // 显式授权对真实密码设备写操作（PQC 编排真调），默认 false=模拟
 }
 
 // createRemediation 按剧本快照建立一条 planned 工单。
@@ -83,6 +84,7 @@ func (s *Server) createRemediation(c *gin.Context) {
 		Acceptance:  pb.Acceptance,
 		Status:      model.RemPlanned,
 		Progress:    0,
+		AllowWrite:  req.AllowWrite, // 建单时的写授权闸门（默认 false）
 	}
 
 	// 资产快照：给了 assetId 则从 DB 取，用资产名覆盖快照，并据算法补默认目标算法。
