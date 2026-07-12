@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"zhulong-pqm/internal/cryptoref"
 	"zhulong-pqm/internal/model"
 )
 
@@ -130,6 +131,21 @@ func assetToComponent(a model.CryptoAsset) Component {
 			NotValidAfter: notAfterStr(a.CertNotAfter),
 		}
 	}
+
+	// PQC 算法：填 NIST 量子安全等级、OID、参数集（来自 cryptoref）。
+	if info, ok := cryptoref.LookupAlgo(a.Algorithm); ok {
+		cp.AlgorithmProperties.NISTQuantumSecurityLevel = info.QuantumLevel
+		if info.OID != "" {
+			cp.OID = info.OID
+		}
+		if info.ParamSet != "" {
+			cp.AlgorithmProperties.ParameterSetIdentifier = info.ParamSet
+		}
+	}
+	// 经典算法：经典安全等级粗估（RSA-2048≈112、P-256≈128），量子等级 0。
+	if cp.AlgorithmProperties.NISTQuantumSecurityLevel == 0 {
+		cp.AlgorithmProperties.ClassicalSecurityLevel = classicalLevel(a)
+	}
 	c.CryptoProperties = cp
 
 	// 烛龙特有的风险维度以 properties 承载，保持 CBOM 可消费性；
@@ -152,6 +168,9 @@ func assetToComponent(a model.CryptoAsset) Component {
 		{"zhulong:d3", fmt.Sprintf("%d", a.D3)},
 		{"zhulong:d4", fmt.Sprintf("%d", a.D4)},
 		{"zhulong:d5", fmt.Sprintf("%d", a.D5)},
+		{"zhulong:kexGroup", a.KexGroup},
+		{"zhulong:kexSafety", a.KexSafety},
+		{"zhulong:authSafety", a.AuthSafety},
 	}
 	return c
 }
@@ -171,6 +190,11 @@ func classifyAssetType(a model.CryptoAsset) string {
 func primitiveOf(algo string) string {
 	a := strings.ToUpper(algo)
 	switch {
+	case strings.Contains(a, "ML-KEM"), strings.Contains(a, "MLKEM"), strings.Contains(a, "KYBER"), strings.Contains(a, "AIGIS-ENC"):
+		return "kem"
+	case strings.Contains(a, "ML-DSA"), strings.Contains(a, "MLDSA"), strings.Contains(a, "DILITHIUM"),
+		strings.Contains(a, "SLH-DSA"), strings.Contains(a, "SPHINCS"), strings.Contains(a, "FALCON"), strings.Contains(a, "AIGIS-SIG"):
+		return "signature"
 	case strings.Contains(a, "RSA"):
 		return "pke" // 公钥加密/签名
 	case strings.Contains(a, "ECDSA"), strings.Contains(a, "ED25519"),
@@ -197,6 +221,11 @@ func paramSet(a model.CryptoAsset) string {
 func cryptoFunctions(algo string) []string {
 	a := strings.ToUpper(algo)
 	switch {
+	case strings.Contains(a, "ML-KEM"), strings.Contains(a, "MLKEM"), strings.Contains(a, "KYBER"), strings.Contains(a, "AIGIS-ENC"):
+		return []string{"encapsulate", "decapsulate"}
+	case strings.Contains(a, "ML-DSA"), strings.Contains(a, "MLDSA"), strings.Contains(a, "DILITHIUM"),
+		strings.Contains(a, "SLH-DSA"), strings.Contains(a, "SPHINCS"), strings.Contains(a, "FALCON"), strings.Contains(a, "AIGIS-SIG"):
+		return []string{"sign", "verify"}
 	case strings.Contains(a, "RSA"):
 		return []string{"encrypt", "decrypt", "sign", "verify"}
 	case strings.Contains(a, "ECDSA"), strings.Contains(a, "ED25519"),
@@ -214,4 +243,19 @@ func notAfterStr(t *time.Time) string {
 		return ""
 	}
 	return t.UTC().Format(time.RFC3339)
+}
+
+// classicalLevel 经典公钥算法的粗略经典安全强度（bits），仅供 CBOM 参考。
+func classicalLevel(a model.CryptoAsset) int {
+	switch {
+	case strings.Contains(strings.ToUpper(a.Algorithm), "RSA"):
+		if a.KeySize >= 3072 {
+			return 128
+		}
+		return 112
+	case strings.Contains(strings.ToUpper(a.Algorithm), "ECDSA"), strings.Contains(strings.ToUpper(a.Algorithm), "SM2"):
+		return 128
+	default:
+		return 0
+	}
 }
