@@ -116,6 +116,8 @@ func roundHalfUp(v float64) int {
 
 // D1 算法脆弱性。
 var optionsD1 = []Option{
+	{"后量子KEM/签名(ML-KEM/ML-DSA)", 10},
+	{"混合(X25519+ML-KEM / SM2+ML-KEM)", 15},
 	{"不受量子影响(AES-256/SHA-3/SM4)", 10},
 	{"AES-128(量子下强度减半)", 40},
 	{"经典ECC/ECDSA/EdDSA", 70},
@@ -229,6 +231,8 @@ type DeriveInput struct {
 	Exposure   string // internal/dmz/public
 	Layer      string // L1/L2/L3/L4
 	LongLived  bool   // 证书有效期距今 >10 年
+	KexSafety  string // 密钥交换维安全态 safe/hybrid/classical/na（cryptoref 给出）
+	AuthSafety string // 认证维安全态 safe/hybrid/classical/na
 }
 
 // Derive 从扫描数据/资产属性自动推导五维分值，用于扫描入库。
@@ -245,7 +249,38 @@ func Derive(in DeriveInput) Dimensions {
 	}
 }
 
+// deriveD1 算法脆弱性：优先用双维量子安全态（cryptoref 分类），回退到经典算法名启发式。
 func deriveD1(in DeriveInput) int {
+	// 取两维安全态里更脆弱者；safe→10、hybrid→15、classical→按经典基线（≥70）。
+	d := 0
+	for _, s := range []string{in.KexSafety, in.AuthSafety} {
+		switch s {
+		case "safe":
+			if d < 10 {
+				d = 10
+			}
+		case "hybrid":
+			if d < 15 {
+				d = 15
+			}
+		case "classical":
+			if d < 70 {
+				d = 70
+			}
+		}
+	}
+	if d == 0 { // 两维都未提供 → 纯经典算法名路径
+		return deriveD1Classic(in)
+	}
+	if d >= 70 { // 存在经典维：用经典启发式细化（弱 RSA/TLS1.0 可拔到 90/100）
+		if legacy := deriveD1Classic(in); legacy > d {
+			return legacy
+		}
+	}
+	return d
+}
+
+func deriveD1Classic(in DeriveInput) int {
 	algo := strings.ToUpper(strings.TrimSpace(in.Algorithm))
 	tls := strings.ReplaceAll(strings.ToUpper(in.TLSVersion), " ", "")
 
