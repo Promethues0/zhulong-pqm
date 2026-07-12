@@ -86,3 +86,55 @@ func TestUpsertAsset_PreservesObservedClassicalForUnknownGroup(t *testing.T) {
 		t.Error("HNDL should remain set（经典 KEX 未缓解先抓后解，长效证书 rawHNDL=true）")
 	}
 }
+
+// TestUpsertAsset_ActiveRescanPreservesKex FIX 4：被动导入发现的混合 KEX 端点，
+// 被 M1 主动重扫（主动扫描器不带 KexGroup）合并时不得被抹成空/na——
+// 既有资产的 PQC 观测须保留，且 D1/HNDL 用保留后的 effective KexSafety 计算。
+func TestUpsertAsset_ActiveRescanPreservesKex(t *testing.T) {
+	gdb, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	r := NewRunner(gdb, nil)
+
+	longLived := time.Now().Add(11 * 365 * 24 * time.Hour)
+
+	// 1) 被动导入：观测到混合组 curveSM2MLKEM768。
+	res1 := &model.ScanResult{
+		Host: "10.50.93.14", Port: 1443,
+		TLSVersion: "TLS1.3",
+		KexGroup:   "curveSM2MLKEM768", KexSafety: model.KexSafetyHybrid,
+		CertNotAfter: &longLived,
+	}
+	a1 := r.upsertAsset(res1, model.ExposureInternal)
+	if a1 == nil || a1.KexSafety != model.KexSafetyHybrid {
+		t.Fatalf("前置失败：被动导入未得到 hybrid 资产 (%+v)", a1)
+	}
+
+	// 2) 主动重扫同 endpoint：ScanResult 无 KexGroup（M1 扫描器不设），带 RSA 证书。
+	res2 := &model.ScanResult{
+		Host: "10.50.93.14", Port: 1443,
+		TLSVersion: "TLS1.3", KeyAlgo: "RSA", KeySize: 2048,
+		CertNotAfter: &longLived,
+	}
+	a2 := r.upsertAsset(res2, model.ExposureInternal)
+	if a2 == nil {
+		t.Fatal("upsertAsset returned nil")
+	}
+	if a2.ID != a1.ID {
+		t.Fatalf("应合并到同一资产：a1.ID=%d a2.ID=%d", a1.ID, a2.ID)
+	}
+	if a2.KexGroup != "curveSM2MLKEM768" {
+		t.Errorf("KexGroup = %q, want curveSM2MLKEM768（主动重扫不得抹除被动 PQC 观测）", a2.KexGroup)
+	}
+	if a2.KexSafety != model.KexSafetyHybrid {
+		t.Errorf("KexSafety = %q, want hybrid", a2.KexSafety)
+	}
+	if a2.HNDL {
+		t.Error("HNDL 应保持清除（保留的 hybrid KEX 仍缓解先抓后解）")
+	}
+	// AuthSafety 按本次 res 更新（主动扫描带证书算法）。
+	if a2.AuthSafety != model.KexSafetyClassical {
+		t.Errorf("AuthSafety = %q, want classical（RSA 证书）", a2.AuthSafety)
+	}
+}
