@@ -42,6 +42,8 @@ func Open(path string) (*gorm.DB, error) {
 		&model.RemediationTask{},
 		// M-B 主机 Agent / 探针身份
 		&model.Agent{},
+		// M-D2 分布式抓包任务
+		&model.CaptureTask{},
 		&model.ScoreProfile{},
 		&model.ScoreHistory{},
 		&model.RescoreRun{},

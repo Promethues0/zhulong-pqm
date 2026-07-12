@@ -23,6 +23,9 @@ type Config struct {
 	MaxPackets  int    // 抓包数上限
 	BPF         string // tcpdump 回退时的 BPF 过滤表达式
 	CaptureMode string // auto/afpacket/tcpdump
+
+	Managed  bool // 探针 managed 模式：轮询领服务端下发的抓包任务
+	TaskPoll int  // managed 轮询间隔（秒）
 }
 
 // envOr 取环境变量，缺省时回落 def。
@@ -90,6 +93,8 @@ func loadConfig(args []string) (Config, error) {
 	fs.IntVar(&cfg.MaxPackets, "max-packets", envIntOr("ZPQM_AGENT_MAX_PACKETS", 100000), "探针抓包数上限")
 	fs.StringVar(&cfg.BPF, "bpf", envOr("ZPQM_AGENT_BPF", "tcp"), "tcpdump 回退时的 BPF 过滤表达式")
 	fs.StringVar(&cfg.CaptureMode, "capture-mode", envOr("ZPQM_AGENT_CAPTURE_MODE", "auto"), "抓包机制：auto/afpacket/tcpdump")
+	fs.BoolVar(&cfg.Managed, "managed", envBoolOr("ZPQM_AGENT_MANAGED", false), "探针 managed 模式：轮询领服务端下发的抓包任务")
+	fs.IntVar(&cfg.TaskPoll, "task-poll", envIntOr("ZPQM_AGENT_TASK_POLL", 15), "managed 轮询间隔（秒）")
 
 	if err := fs.Parse(args); err != nil {
 		return cfg, err
