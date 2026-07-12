@@ -126,17 +126,11 @@ func ParsePCAP(data []byte) ([]TLSObservation, PcapStats, error) {
 				if o.Version == "" {
 					o.Version = hs.version
 				}
-				if o.KexGroup == "" && len(hs.offeredGroups) > 0 {
-					for _, g := range hs.offeredGroups {
-						if name, kind, _, known := cryptoref.ClassifyGroup(g); known && kind != "classical" {
-							o.KexGroup, o.KexSafety = name, cryptoref.SafetyFromKind(kind)
-							break
-						}
-					}
-					if o.KexGroup == "" && hs.clientKeyShareMax > 1000 {
-						applyKexGroup(o, hs.offeredGroups[0], hs.clientKeyShareMax)
-					}
-				}
+				// 注意：客户端 supported_groups（hs.offeredGroups）只是「提供」，不是协商结果。
+				// Chrome131+/Firefox 每个 ClientHello 都提供混合组，若据此填 KexGroup 会把
+				// 实际协商 TLS1.2/经典的服务端误记 hybrid（系统性高报迁移）。协商组只能来自
+				// 服务端 ServerHello key_share（下方 applyKexGroup 为唯一设值点）；
+				// 未观测到协商即保持为空（KexSafety=na）。
 			case hs.isServerHello:
 				o := get(k.sip, k.sport) // 服务端→客户端：服务端=src
 				o.Cipher = hs.cipher
