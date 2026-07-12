@@ -358,6 +358,11 @@ func stripLink(pkt []byte, linkType uint32) ([]byte, uint16) {
 			return nil, 0
 		}
 		return pkt[16:], binary.BigEndian.Uint16(pkt[14:16])
+	case 276: // LINUX_SLL2（现代 libpcap 的 tcpdump -i any 默认；头 20 字节，protocol 在偏移 0）
+		if len(pkt) < 20 {
+			return nil, 0
+		}
+		return pkt[20:], binary.BigEndian.Uint16(pkt[0:2])
 	default:
 		return nil, 0
 	}
