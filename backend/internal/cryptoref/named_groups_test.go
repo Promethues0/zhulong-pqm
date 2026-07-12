@@ -28,6 +28,29 @@ func TestClassifyGroup_KnownCodepoints(t *testing.T) {
 	}
 }
 
+// TestClassifyGroup_ClassicalTLS13Groups FIX 6：标准经典 TLS1.3 组（RFC 7919 ffdhe /
+// RFC 8734 brainpool-tls13）须在表内判 classical，不落 "unknown-" 兜底面。
+func TestClassifyGroup_ClassicalTLS13Groups(t *testing.T) {
+	name, kind, iana, known := ClassifyGroup(0x0100)
+	if name != "ffdhe2048" || kind != "classical" || !iana || !known {
+		t.Errorf("ClassifyGroup(0x0100) = (%q,%q,%v,%v), want (ffdhe2048,classical,true,true)",
+			name, kind, iana, known)
+	}
+	if g, s := KexSafetyForGroup(0x0100, 0); g != "ffdhe2048" || s != SafetyClassical {
+		t.Errorf("KexSafetyForGroup(0x0100,0) = (%q,%q), want (ffdhe2048,classical)", g, s)
+	}
+	for cp, want := range map[int]string{
+		0x0101: "ffdhe3072", 0x0102: "ffdhe4096", 0x0103: "ffdhe6144", 0x0104: "ffdhe8192",
+		0x001F: "brainpoolP256r1tls13", 0x0020: "brainpoolP384r1tls13", 0x0021: "brainpoolP512r1tls13",
+	} {
+		name, kind, _, known := ClassifyGroup(cp)
+		if !known || name != want || kind != "classical" {
+			t.Errorf("ClassifyGroup(0x%04X) = (%q,%q,known=%v), want (%q,classical,true)",
+				cp, name, kind, known, want)
+		}
+	}
+}
+
 func TestIsGREASEGroup(t *testing.T) {
 	for _, g := range []int{0x0A0A, 0x1A1A, 0x2A2A, 0xFAFA} {
 		if !IsGREASEGroup(g) {

@@ -34,6 +34,15 @@ var namedGroups = map[int]group{
 	0x001D: {"x25519", "classical", true},
 	0x001E: {"x448", "classical", true},
 	0x0029: {"curveSM2", "classical", true}, // IANA#41 RFC8998 国密经典指纹
+	// 经典 TLS1.3 组补全（缩小 "unknown-" 兜底面，避免经典组被保守判 hybrid）
+	0x001F: {"brainpoolP256r1tls13", "classical", true}, // RFC 8734
+	0x0020: {"brainpoolP384r1tls13", "classical", true},
+	0x0021: {"brainpoolP512r1tls13", "classical", true},
+	0x0100: {"ffdhe2048", "classical", true}, // RFC 7919
+	0x0101: {"ffdhe3072", "classical", true},
+	0x0102: {"ffdhe4096", "classical", true},
+	0x0103: {"ffdhe6144", "classical", true},
+	0x0104: {"ffdhe8192", "classical", true},
 	// 纯 ML-KEM（IANA#512-514）
 	0x0200: {"MLKEM512", "pqc", true},
 	0x0201: {"MLKEM768", "pqc", true},
