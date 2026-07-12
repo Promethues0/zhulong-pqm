@@ -47,6 +47,14 @@ func KexMitigatesHNDL(kexSafety string) bool {
 	return kexSafety == SafetySafe || kexSafety == SafetyHybrid
 }
 
+// EffectiveHNDL 资产最终 HNDL：评分公式给出的 rawHNDL（D2/D3 敏感度×生命周期），
+// 叠加 KEX 迁移状态清除——KEX 已迁移（safe/hybrid）则先抓后解已缓解，HNDL 不成立。
+// 所有写 HNDL 的站点（扫描入库、手工评分、权重档复算、监测复评）统一走本函数，
+// 保证清除策略处处一致、不被任何重算路径复活。评分公式本身（scoring.Score）不变。
+func EffectiveHNDL(rawHNDL bool, kexSafety string) bool {
+	return rawHNDL && !KexMitigatesHNDL(kexSafety)
+}
+
 // AlgoInfo PQC 算法的 CBOM 标识信息。
 type AlgoInfo struct {
 	Primitive    string // kem / signature / hash

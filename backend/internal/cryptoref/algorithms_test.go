@@ -30,6 +30,28 @@ func TestKexMitigatesHNDL(t *testing.T) {
 	}
 }
 
+func TestEffectiveHNDL(t *testing.T) {
+	cases := []struct {
+		raw       bool
+		kexSafety string
+		want      bool
+	}{
+		{true, SafetyHybrid, false},   // 已迁移(混合) → 清除
+		{true, SafetySafe, false},     // 已迁移(纯PQC) → 清除
+		{true, SafetyClassical, true}, // 经典 → 保留
+		{true, SafetyNA, true},        // 未观测 → 保留
+		{true, "", true},              // 空 → 保留
+		{false, SafetyClassical, false},
+		{false, SafetyHybrid, false},
+		{false, "", false},
+	}
+	for _, c := range cases {
+		if got := EffectiveHNDL(c.raw, c.kexSafety); got != c.want {
+			t.Errorf("EffectiveHNDL(%v, %q) = %v, want %v", c.raw, c.kexSafety, got, c.want)
+		}
+	}
+}
+
 func TestLookupAlgo(t *testing.T) {
 	mlkem, ok := LookupAlgo("ML-KEM-768")
 	if !ok || mlkem.Primitive != "kem" || mlkem.QuantumLevel != 3 {

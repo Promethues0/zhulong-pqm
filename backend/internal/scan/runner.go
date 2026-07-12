@@ -376,7 +376,9 @@ func (r *Runner) upsertImportedAsset(res *model.ScanResult, exposure string) *mo
 		a.RiskLevel = result.Level
 		a.RiskLevelText = result.LevelText
 		a.AuthSafety = authSafety
-		a.HNDL = result.HNDL
+		// 证书导入不带 KEX 观测（a.KexSafety 新资产为空→行为不变）；按证书指纹合并到
+		// 已有混合 KEX 资产时，沿用资产自身的 KexSafety 保持 HNDL 清除不回退。
+		a.HNDL = cryptoref.EffectiveHNDL(result.HNDL, a.KexSafety)
 		a.SuggestedAlgo = scoring.SuggestAlgo(res.KeyAlgo)
 		a.RiskHint = fmt.Sprintf("%s 综合风险 %d(%s) 建议迁移窗口 %s",
 			res.KeyAlgo, result.Score, result.LevelText, result.Window)
@@ -458,7 +460,7 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 		a.KexGroup = res.KexGroup
 		a.KexSafety = kexSafety
 		a.AuthSafety = authSafety
-		a.HNDL = result.HNDL && !cryptoref.KexMitigatesHNDL(kexSafety) // KEX 已迁移→清 HNDL
+		a.HNDL = cryptoref.EffectiveHNDL(result.HNDL, kexSafety) // KEX 已迁移→清 HNDL（共享策略）
 		a.SuggestedAlgo = scoring.SuggestAlgo(res.KeyAlgo)
 		a.RiskHint = fmt.Sprintf("%s/%s 综合风险 %d(%s) 建议迁移窗口 %s",
 			res.KeyAlgo, res.TLSVersion, result.Score, result.LevelText, result.Window)
