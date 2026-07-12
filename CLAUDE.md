@@ -28,8 +28,10 @@ cd deploy && VERSION=1.0.0 ./package.sh     # 产出 tar.gz；目标机 sudo ./i
 - `backend/internal/gmtls/` — 国密 TLCP 管理面（ZPQM_TLCP_ADDR 启用，首启自动生成自签 SM2 双证）
 - `frontend/src/views/` — 15 页（Dashboard/Discovery/Assets/RiskAssessment/Remediation/Acceptance/Monitor/BigScreen…）
 - `frontend/src/api/` — client.ts(axios Bearer+401跳登录) / types.ts 镜像后端契约（后端 uint id=前端 number）
-- `agent/zhulong-pqm-agent.sh` — 主机 Agent PoC（bash），经 /api/v1 ingest 回报
-- `docs/` — PRD.md（11章/101FR/12DP）、深化蓝图-R3.md、使用说明书.md
+- `backend/internal/cryptoref/` — **后量子识别引擎地基**：TLS 命名组码点表(named_groups)/PQC算法表(algorithms)/进程×加密库检测表(lib_detect)；码点权威·尺寸兜底·GREASE丢弃·EffectiveHNDL共享清除。数据源 `docs/superpowers/specs/2026-07-11-pqc-crypto-lib-research.md`
+- `backend/cmd/agent/` — **主机 Agent 二进制(M-C)**：纯Go免CGO单文件，进程×库/监听握手/磁盘证书/SSH主机密钥/内核算法+dpkg-rpm包五路发现；经 M-B 受限通道(X-Agent-Key)上报。旧 `agent/zhulong-pqm-agent.sh` bash PoC 仍保留
+- `backend/internal/api/agents.go` + `model.Agent` — **M-B Agent身份**：注册→一次性apiKey→X-Agent-Key受限上报(/agent/assets/batch)，资产盖 ReportedBy 归属
+- `docs/` — PRD.md、深化蓝图-R3.md、使用说明书.md、**主机Agent安装手册.md**、**deploy-10.50.93.20-runbook.md**、superpowers/{specs,plans}(PQC识别设计/M-A计划/字典附录)
 
 ## 关键约定
 
