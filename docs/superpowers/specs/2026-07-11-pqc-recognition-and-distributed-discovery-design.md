@@ -42,12 +42,12 @@
 
 | 字段 | 类型 | 含义 | 取值 |
 |---|---|---|---|
-| `KexGroup` | string | 协商的密钥交换组名 | `X25519MLKEM768`/`SM2MLKEM768`/`x25519`/`secp256r1`/`""` |
+| `KexGroup` | string | 协商的密钥交换组名（用 cryptoref 规范名） | `X25519MLKEM768`/`curveSM2MLKEM768`/`x25519`/`secp256r1`/`""` |
 | `KexSafety` | string | 交换维量子安全态 | `safe`/`hybrid`/`classical`/`na` |
 | `AuthSafety` | string | 认证/签名维量子安全态 | `safe`/`hybrid`/`classical`/`na` |
 | `ReportedBy` | string | 上报来源 Agent/探针 ID（归属） | `agent-7f3a`/`""` |
 
-- `safe` = 纯 PQC（如纯 ML-KEM、ML-DSA）；`hybrid` = 经典+PQC 混合（X25519MLKEM768、SM2MLKEM768）；`classical` = 纯经典（X25519/ECDH/RSA/SM2）；`na` = 该维不适用（如裸证书文件无 KEX，或对称密钥）。
+- `safe` = 纯 PQC（如纯 ML-KEM、ML-DSA）；`hybrid` = 经典+PQC 混合（X25519MLKEM768、curveSM2MLKEM768）；`classical` = 纯经典（X25519/ECDH/RSA/SM2）；`na` = 该维不适用（如裸证书文件无 KEX，或对称密钥）。
 - 新增枚举常量组 `KexSafety*`/`AuthSafety*`（与现有 `Layer*`/`Source*` 同风格）。
 - `Algorithm` 字段保留为人读摘要，可组合成 `"X25519MLKEM768 + ECDSA-P256"`。
 
@@ -76,32 +76,56 @@
 
 新增一个共享包 `backend/internal/cryptoref/`，把"码点/算法/库"三张字典与分类逻辑集中，供被动解析、主动扫描、Agent、探针复用。
 
-### 2.1 三张引擎字典（由研究工作流回填）
+### 2.1 三张引擎字典
 
-> 以下三张表由 `pqc-crypto-lib-research` 工作流合成回填；此处先占位，落库前逐条核对来源。
+> 完整字典（60+ 码点、20+ 库、25+ 算法，含 IANA 逐条校验与工程规则）见配套数据附录 [2026-07-11-pqc-crypto-lib-research.md](2026-07-11-pqc-crypto-lib-research.md)。`cryptoref/` 的 Go 表按附录落地。此处只列驱动设计的核心子集与判定规则。
 
-**A. `named_group_table`**：TLS 命名组码点 → {name, kind(classical/hybrid/pqc), is_iana, size_hint, note}。
-覆盖经典组、IANA 混合组（0x11EB/0x11EC/0x11ED）、遗留 Kyber 混合（0x6399/0x639A）、纯 ML-KEM、以及**铜锁/openHiTLS/pqmagic 的 SM2 国密混合组**与各家私有/实验/草案码点。
+**A. `named_group_table`**（TLS 命名组码点 → kind/is_iana/size_hint）核心行：
 
-```
-<待回填：named_group_table>
-```
+| 码点 | 名称 | kind | 备注 |
+|---|---|---|---|
+| 0x001D / 0x0017 / 0x0029 | x25519 / secp256r1 / **curveSM2** | classical | 经典基线；curveSM2=IANA#41 正式码点、国密栈经典指纹 |
+| 0x0200-0202 | MLKEM512/768/1024 | pqc | 纯 ML-KEM，IANA#512-514 |
+| **0x11EC** | **X25519MLKEM768** | hybrid | IANA#4588，注册表唯一 Rec=Y，互联网主流。**验收包 :443 即此** |
+| 0x11EB | SecP256r1MLKEM768 | hybrid | IANA#4587 |
+| **0x11EE** | **curveSM2MLKEM768** | hybrid | IANA#4590 国密 SM2+ML-KEM，铜锁 Tongsuo 8.5+ 唯一默认实现。**验收包 :1443 即此** |
+| 0x6399 / 0x639A | X25519/SecP256r1 Kyber768Draft00 (OBSOLETE) | hybrid | IANA 已废弃，识别 2023-24 旧流量 |
+| 0xFEFE | curveSM2MLKEM768 (draft-02 临时) | hybrid | 非 IANA，见此=旧版铜锁时间指纹 |
+| 0x2F4x/0xFE1x-3x 段 | OQS 私有(mlkem/bike/frodo/hqc 混合) | pqc/hybrid | 可被 `OQS_CODEPOINT_*` 改写 |
+| 0x?A?A (16 个) | **GREASE** | — | ⚠必须识别为噪声，绝不记为未知 PQC 组 |
 
-**B. `lib_detection_table`**：soname/包名 → {library, pqc_capable, pqc_since_version, note}，用于"进程×加密库映射"判某进程加载的库是否具备 PQC 能力。
+**B. `lib_detection_table`**（soname/包名 → library/pqc_capable/since_version）核心行：
 
-```
-<待回填：lib_detection_table>
-```
+| soname/包 | 库 | PQC 起始 | 关键消歧 |
+|---|---|---|---|
+| libcrypto.so.3 | OpenSSL 3.x | **3.5.0** | ⚠soname 恒 3，须读版本串≥3.5 |
+| libcrypto.so.3（同名歧义） | **铜锁 Tongsuo** | **8.5.0** | ⚠三重消歧：版本串/国密符号/0x11EE 流量 |
+| libhitls_crypto.so | openHiTLS | ≥0.3.x | 符号 `CRYPT_PKEY_ML_KEM`；不实现 0x11EE |
+| libgmssl.so.3 | GmSSL 3.x | **3.2.0** | ⚠SOVERSION 恒 3；TLS 不发 PQC 组 |
+| libpqmagic_std.so | PQMagic | 全版本 | 含自研 Aigis/SPHINCS-Alpha；无版本可判；本身不做 TLS |
+| liboqs / oqsprovider.so | OQS | 全版本 | ⚠常静态内嵌；装了≠启用 |
+| libcrypto-awslc.so.1 / libsymcrypt.so.103 / 无后缀 libcrypto.so | AWS-LC / SymCrypt / BoringSSL | ✓ | 无国密、无 0x11EE，命中可排除国密栈 |
 
-**C. `pqc_algo_table`**：PQC 算法 → {kind(kem/signature), cbom_primitive, param_sets, oid, is_chinese_national, note}，用于评分与 CBOM。
+**C. `pqc_algo_table`**（算法 → kind/cbom_primitive/oid/is_cn）核心行：
 
-```
-<待回填：pqc_algo_table>
-```
+| 算法 | kind | OID | is_cn | 备注 |
+|---|---|---|---|---|
+| ML-KEM 512/768/1024 | kem | 2.16.840.1.101.3.4.4.{1,2,3} | 否 | 事实标准 |
+| ML-DSA 44/65/87 | signature | 2.16.840.1.101.3.4.3.{17,18,19} | 否 | 安恒签名机 10.50.93.6 实测在用 |
+| SLH-DSA | signature | 2.16.840.1.101.3.4.3.20-.31 | 否 | ⚠.3.20 被 GmSSL 挪用标 SM3-SPHINCS+ |
+| **Aigis-enc / Aigis-sig / SPHINCS-Alpha** | kem/sig | **无公开 OID** | **是** | ★仅 PQMagic；安恒 Aigis 密码机 10.50.93.7 实测在用；OID 缺口需真机补录 |
+| Kyber/Dilithium/Falcon/Frodo/BIKE/HQC | kem/sig | OQS 私有弧 | 否 | 遗留/实验，字典兜底 |
 
-### 2.2 尺寸启发式兜底（关键鲁棒性）
+- 三张表的完整版（含所有 OQS 私有段、XMSS/LMS/Composite、撞号史、待补缺口）在附录。落库前对附录逐条核对来源。
 
-注册表认不出的码点（铜锁私有码、未来新算法），用 `key_share` 字节数兜底判定：**client key_share > 1000 字节基本必是格基 KEM**（经典组：P-521=133B、x448=56B、x25519=32B）。因此即便 `0x11EE` 未在表中，也能凭 1249B 判为"疑似 PQC/混合"，`KexSafety=hybrid`（若同时含 ≤133B 的经典分量特征）或 `pqc`，并在 `note` 标"尺寸启发式判定，码点未确认"。
+### 2.2 判定优先级：码点权威，尺寸兜底
+
+**码点本体是权威判据，尺寸只是未知码点的兜底**——这条顺序不能反。调研证实两个反例：
+
+- **同尺寸不同码点**：`0x11EB`(SecP256r1MLKEM768) 与 `0x11EE`(curveSM2MLKEM768) 的 client(1249B)/server(1153B) **完全相同**。若靠尺寸判定会把国密混合组误判成 P-256 混合组。**必须读码点**才能区分——验收包里正是读出 0x11EE 才锁定铜锁 SM2 混合。
+- **同码点不同算法**：`0x0200-0202` 现为 ML-KEM，但旧 oqs-provider(≤0.5.x) 曾用作 FrodoKEM（≈9616B）——**这里反过来靠尺寸消歧**（ML-KEM=800/1184/1568B vs Frodo≈9616B）。
+
+因此判定链：① 命中 `named_group_table` → 直接取 kind；② 未命中 → 尺寸兜底：**client key_share >1000B 基本必是格基 KEM**（经典组最大 P-521=133B），标 `KexSafety=hybrid/pqc` + `note="尺寸启发式，码点 0xXXXX 未确认"`；③ GREASE(`0x?A?A`) 与 1B 载荷 → 噪声丢弃；④ 在场 OQS 库的未知码点 → 提示可能是 `OQS_CODEPOINT_*` 改写值。
 
 ### 2.3 A2 被动解析补齐（`backend/internal/scan/pcap_tls.go`）
 
@@ -131,7 +155,7 @@
 
 上传 `~/Desktop/VPN客户端后量子抓包.pcapng` 后，平台密码使用点清单应出现：
 - `:443` 使用点：`KexGroup=X25519MLKEM768`、`KexSafety=hybrid`、`HNDL=false`（已缓解）、D1≤15。
-- `:1443` 使用点：`KexGroup=SM2MLKEM768`（或"疑似铜锁 SM2 混合，尺寸启发式"）、`KexSafety=hybrid`。
+- `:1443` 使用点：读出码点 0x11EE → `KexGroup=curveSM2MLKEM768`、`KexSafety=hybrid`、`note` 归因铜锁 Tongsuo 系（IANA#4590）。
 - 纯经典 x25519 的那几条：`KexSafety=classical`，若数据敏感+长生命周期则 `HNDL=true`。
 - 单测：新增 `pqc_probe_test.go`、扩 `pcap_test.go`，用验收包片段做黄金用例；`scoring_test.go` 加 PQC 画像断言。
 
@@ -227,7 +251,8 @@ A（识别引擎）──▶ B（身份契约）──▶ C（主机 Agent）─
 ## 7. 风险与约束
 
 - **纯 Go 免 CGO 是硬约束**（CLAUDE.md）：AF_PACKET 用 `x/sys/unix` 满足；rpm 走 shell；SQLite 保持 glebarez；不得引入 CGO 依赖。
-- **私有码点漂移**：铜锁/openHiTLS 的私有码点可能随版本变；靠尺寸启发式兜底 + `cryptoref` 表可运行期扩展（考虑把 named_group_table 也做成可 seed 进 DB 的行，便于不重编译加码点——本轮先 Go 表 + 启发式，DB 化留后续）。
+- **码点漂移**：OQS 私有码点可被 `OQS_CODEPOINT_*` 环境变量运行期改写，未来还会有新混合组进 IANA；靠 §2.2 尺寸兜底 + `cryptoref` 表可扩展应对（考虑把 named_group_table 做成可 seed 进 DB 的行，便于不重编译加码点——本轮先 Go 表 + 启发式，DB 化留后续）。注意 0x11EE 是 IANA 正式码点（非铜锁私有），稳定可硬编码。
+- **soname 歧义误判**：铜锁与 OpenSSL 同 `libcrypto.so.3`，进程×库映射单靠 soname 会把铜锁误判成 OpenSSL；须叠加版本串/国密符号/0x11EE 流量三重消歧（附录 §D.6）。「装了≠在用」：库能力检测须与运行态/配置交叉验证（§4.3 drift）。
 - **主动枚举探测的合规**：只对授权目标发探测 ClientHello，沿用现有扫描的授权/速率/SSRF 防护。
 - **规则库自检**：新增 PQC 规则会改变 seed_rules 的强制计数断言，需同步更新。
 - **端口/环境**：后端 :8099，勿与 :8088 混淆；字节跳动蓝 #165DFF 主题；vite base 双态坑。
