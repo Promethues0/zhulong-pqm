@@ -12,6 +12,8 @@ import type {
   AuditLog,
   AuditQuery,
   CbomSnapshot,
+  Agent,
+  CaptureTask,
   Coverage,
   CryptoAsset,
   CryptoAssetInput,
@@ -630,5 +632,32 @@ export const groupApi = {
     return client
       .get<AssetByGroup[]>('/assets/by-group')
       .then((r) => r.data ?? [])
+  },
+}
+
+export const agentApi = {
+  list() {
+    return client.get<{ agents: Agent[] }>('/agents').then((r) => r.data.agents ?? [])
+  },
+  create(payload: { hostname: string; kind: string; labels: string[]; os?: string }) {
+    return client.post<{ agent: Agent; apiKey: string }>('/agents', payload).then((r) => r.data)
+  },
+  revoke(id: number) {
+    return client.post(`/agents/${id}/revoke`).then((r) => r.data)
+  },
+}
+
+export const captureApi = {
+  list() {
+    return client.get<{ captures: CaptureTask[] }>('/captures').then((r) => r.data.captures ?? [])
+  },
+  create(payload: Partial<CaptureTask>) {
+    return client.post<CaptureTask>('/captures', payload).then((r) => r.data)
+  },
+  cancel(id: number) {
+    return client.post(`/captures/${id}/cancel`).then((r) => r.data)
+  },
+  remove(id: number) {
+    return client.delete(`/captures/${id}`).then((r) => r.data)
   },
 }

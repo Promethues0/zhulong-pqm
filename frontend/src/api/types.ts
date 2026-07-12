@@ -980,3 +980,35 @@ export interface AssetByGroup {
   p1: number
   hndl: number
 }
+
+// M-B/M-D2 主机 Agent / 探针 + 抓包任务
+export interface Agent {
+  id: number
+  agentId: string
+  hostname: string
+  kind: 'host' | 'probe' | 'both'
+  labels?: string[]
+  status: 'active' | 'revoked'
+  version?: string
+  os?: string
+  lastSeenAt?: string | null
+  enrolledAt?: string
+}
+
+export interface CaptureTask {
+  id: number
+  name: string
+  labelSelector?: string[]
+  iface?: string
+  bpf?: string
+  duration?: number
+  maxPackets?: number
+  status: 'pending' | 'leased' | 'done' | 'failed' | 'cancelled'
+  leasedBy?: string
+  resultCount?: number
+  runCount?: number
+  schedule?: string
+  scheduleEnabled?: boolean
+  nextRunAt?: string | null
+  createdAt?: string
+}

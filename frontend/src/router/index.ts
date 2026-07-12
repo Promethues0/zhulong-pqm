@@ -50,6 +50,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '风险评估' },
       },
       {
+        path: 'agents',
+        name: 'agents',
+        component: () => import('@/views/Agents.vue'),
+        meta: { title: 'Agent / 探针管理' },
+      },
+      {
+        path: 'captures',
+        name: 'captures',
+        component: () => import('@/views/CaptureTasks.vue'),
+        meta: { title: '抓包任务' },
+      },
+      {
         path: 'remediation',
         name: 'remediation',
         component: () => import('@/views/Remediation.vue'),
