@@ -53,3 +53,36 @@ func TestUpsertAsset_PQCClearsHNDL(t *testing.T) {
 		t.Error("HNDL should remain set when KEX is classical (经典 KEX 不缓解先抓后解)")
 	}
 }
+
+// TestUpsertAsset_PreservesObservedClassicalForUnknownGroup FIX 2：观测层对未知码点+小 key_share
+// 已判 classical（如 ffdhe/brainpool 等表外经典组），该判定必须贯通到资产——
+// 不得因 SafetyForGroupName 的 "unknown-"→hybrid 兜底被跨 ScanResult 升级成 hybrid。
+func TestUpsertAsset_PreservesObservedClassicalForUnknownGroup(t *testing.T) {
+	gdb, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	r := NewRunner(gdb, nil)
+
+	longLived := time.Now().Add(11 * 365 * 24 * time.Hour)
+	res := &model.ScanResult{
+		Host: "10.0.0.5", Port: 8443,
+		TLSVersion: "TLS1.3", KeyAlgo: "RSA",
+		KexGroup:     "unknown-0x1234",
+		KexSafety:    model.KexSafetyClassical, // 观测层权威判定：小 key_share → classical
+		CertNotAfter: &longLived,
+	}
+	a := r.upsertAsset(res, model.ExposurePublic)
+	if a == nil {
+		t.Fatal("upsertAsset returned nil")
+	}
+	if a.KexSafety != model.KexSafetyClassical {
+		t.Errorf("KexSafety = %q, want classical（观测判定不得被名字兜底覆盖成 hybrid）", a.KexSafety)
+	}
+	if a.D1 == 15 {
+		t.Errorf("D1 = 15（hybrid 档），经典 KEX + RSA 认证不应享受迁移分")
+	}
+	if !a.HNDL {
+		t.Error("HNDL should remain set（经典 KEX 未缓解先抓后解，长效证书 rawHNDL=true）")
+	}
+}

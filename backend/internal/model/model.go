@@ -770,7 +770,8 @@ type ScanResult struct {
 	KeyAlgo     string `json:"keyAlgo"`
 	KeySize     int    `json:"keySize"`
 	SigAlgo     string `json:"sigAlgo"`
-	KexGroup    string `json:"kexGroup"` // 被动/主动观测到的密钥交换组规范名
+	KexGroup    string `json:"kexGroup"`  // 被动/主动观测到的密钥交换组规范名
+	KexSafety   string `json:"kexSafety"` // 观测层交换维安全态（权威，优先于按组名反查；FIX 2）
 
 	CertSubject     string     `json:"certSubject"`
 	CertIssuer      string     `json:"certIssuer"`

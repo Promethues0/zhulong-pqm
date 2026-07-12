@@ -411,7 +411,12 @@ func (r *Runner) upsertAsset(res *model.ScanResult, exposure string) *model.Cryp
 	}
 	endpoint := fmt.Sprintf("%s:%d", res.Host, res.Port)
 
-	kexSafety := cryptoref.SafetyForGroupName(res.KexGroup)
+	// 观测层的 KexSafety 判定权威（码点+尺寸兜底在观测处已定），名字反查仅作 res 未提供时的兜底——
+	// 否则 "unknown-" 前缀的保守 hybrid 兜底会把观测为 classical 的端点跨 ScanResult 升级成 hybrid。
+	kexSafety := res.KexSafety
+	if kexSafety == "" {
+		kexSafety = cryptoref.SafetyForGroupName(res.KexGroup)
+	}
 	authSafety := cryptoref.AuthSafetyForAlgo(res.KeyAlgo)
 	dims := scoring.Derive(scoring.DeriveInput{
 		Algorithm:  res.KeyAlgo,
