@@ -26,6 +26,10 @@ type tlsHandshake struct {
 	certKeySize   int      // 叶证书密钥位数
 	certFP        string   // 叶证书 SHA-256 指纹
 	certSubject   string   // 叶证书 CN
+
+	negotiatedGroup   int   // ServerHello/HRR key_share 选中的组码点（0=无）
+	offeredGroups     []int // ClientHello supported_groups 提供的组码点
+	clientKeyShareMax int   // ClientHello 各组 key_share 里最大字节数（尺寸兜底用）
 }
 
 // hsMsg 一条握手消息（类型 + 体，体已跨 TLS 记录/TCP 段拼接完整）。
@@ -139,6 +143,7 @@ func parseHello(b []byte, out *tlsHandshake, client bool) {
 		i += 1 + compLen
 		// extensions
 		out.sni = parseSNI(b, i)
+		parseClientGroups(b, i, out)
 	} else {
 		// ServerHello: cipher_suite(2)
 		if i+2 > len(b) {
@@ -152,6 +157,7 @@ func parseHello(b []byte, out *tlsHandshake, client bool) {
 		if v := parseSupportedVersion(b, i); v != "" {
 			out.version = v
 		}
+		out.negotiatedGroup = parseServerKeyShareGroup(b, i)
 	}
 }
 
@@ -365,4 +371,91 @@ func certKeyBits(c *x509.Certificate) int {
 		}
 	}
 	return 0
+}
+
+// parseClientGroups 从 ClientHello 扩展区抽 supported_groups(0x000a) 与各组 key_share(0x0033) 尺寸。
+// 严格守界；GREASE 组跳过；截断即安全停止。
+func parseClientGroups(b []byte, i int, out *tlsHandshake) {
+	exts := walkExtensions(b, i)
+	for _, e := range exts {
+		switch e.typ {
+		case 0x000a: // supported_groups: list_len(2) + groups
+			d := e.data
+			if len(d) < 2 {
+				continue
+			}
+			ll := int(d[0])<<8 | int(d[1])
+			d = d[2:]
+			if ll > len(d) {
+				ll = len(d)
+			}
+			for j := 0; j+2 <= ll; j += 2 {
+				g := int(d[j])<<8 | int(d[j+1])
+				if isGREASE(g) {
+					continue
+				}
+				out.offeredGroups = append(out.offeredGroups, g)
+			}
+		case 0x0033: // key_share (client): client_shares_len(2) + entries{group(2)+len(2)+key}
+			d := e.data
+			if len(d) < 2 {
+				continue
+			}
+			total := int(d[0])<<8 | int(d[1])
+			d = d[2:]
+			if total > len(d) {
+				total = len(d)
+			}
+			k := 0
+			for k+4 <= total {
+				klen := int(d[k+2])<<8 | int(d[k+3])
+				if klen > out.clientKeyShareMax {
+					out.clientKeyShareMax = klen
+				}
+				k += 4 + klen
+			}
+		}
+	}
+}
+
+// parseServerKeyShareGroup 从 ServerHello/HelloRetryRequest 扩展区取 key_share(0x0033) 的 selected_group。
+// ServerHello 的 key_share = group(2)+len(2)+key；HRR 的 key_share 仅 selected_group(2)。两者都取前 2 字节。
+func parseServerKeyShareGroup(b []byte, i int) int {
+	for _, e := range walkExtensions(b, i) {
+		if e.typ == 0x0033 && len(e.data) >= 2 {
+			return int(e.data[0])<<8 | int(e.data[1])
+		}
+	}
+	return 0
+}
+
+// tlsExt 一条 TLS 扩展（类型 + 数据）。
+type tlsExt struct {
+	typ  int
+	data []byte
+}
+
+// walkExtensions 从偏移 i 处（extensions_len(2)+entries）切出所有扩展，严格守界。
+func walkExtensions(b []byte, i int) []tlsExt {
+	var out []tlsExt
+	if i+2 > len(b) {
+		return out
+	}
+	extLen := int(b[i])<<8 | int(b[i+1])
+	i += 2
+	end := i + extLen
+	if end > len(b) {
+		end = len(b)
+	}
+	for i+4 <= end {
+		etype := int(b[i])<<8 | int(b[i+1])
+		elen := int(b[i+2])<<8 | int(b[i+3])
+		i += 4
+		if i+elen > end {
+			break
+		}
+		out = append(out, tlsExt{typ: etype, data: b[i : i+elen]})
+		i += elen
+	}
+	return out
 }

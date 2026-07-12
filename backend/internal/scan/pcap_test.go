@@ -192,3 +192,42 @@ func TestParsePCAP_Rejects(t *testing.T) {
 		t.Errorf("截断记录不应致错: %v", err)
 	}
 }
+
+func TestParseHello_KeyExchangeGroups(t *testing.T) {
+	// ---- 合成 ServerHello：key_share 扩展选中 0x11EC (X25519MLKEM768) ----
+	// ServerHello body: version(2)=0303 random(32) sid_len(1)=0 cipher(2)=1301 comp(1)=0 ext_len(2) exts...
+	sh := []byte{0x03, 0x03}
+	sh = append(sh, make([]byte, 32)...) // random
+	sh = append(sh, 0x00)                // sid_len
+	sh = append(sh, 0x13, 0x01)          // cipher TLS_AES_128_GCM_SHA256
+	sh = append(sh, 0x00)                // compression
+	// 扩展：key_share(0x0033) len=2, group=0x11EC（HRR 布局：只含 selected_group 2 字节）
+	ksExt := []byte{0x00, 0x33, 0x00, 0x02, 0x11, 0xEC}
+	extLen := len(ksExt)
+	sh = append(sh, byte(extLen>>8), byte(extLen))
+	sh = append(sh, ksExt...)
+
+	out := &tlsHandshake{}
+	parseHello(sh, out, false)
+	if out.negotiatedGroup != 0x11EC {
+		t.Errorf("ServerHello negotiatedGroup = 0x%04X, want 0x11EC", out.negotiatedGroup)
+	}
+
+	// ---- 合成 ClientHello：supported_groups 提供 [0x001D, 0x11EE] ----
+	ch := []byte{0x03, 0x03}
+	ch = append(ch, make([]byte, 32)...)    // random
+	ch = append(ch, 0x00)                   // sid_len
+	ch = append(ch, 0x00, 0x02, 0x13, 0x01) // cipher_suites_len=2 + TLS_AES_128_GCM
+	ch = append(ch, 0x01, 0x00)             // compression_len=1 + null
+	// 扩展区：supported_groups(0x000a): ext_data = list_len(2)=4 + [001D,11EE]
+	sgExt := []byte{0x00, 0x0a, 0x00, 0x06, 0x00, 0x04, 0x00, 0x1D, 0x11, 0xEE}
+	el := len(sgExt)
+	ch = append(ch, byte(el>>8), byte(el))
+	ch = append(ch, sgExt...)
+
+	out2 := &tlsHandshake{}
+	parseHello(ch, out2, true)
+	if len(out2.offeredGroups) != 2 || out2.offeredGroups[0] != 0x001D || out2.offeredGroups[1] != 0x11EE {
+		t.Errorf("ClientHello offeredGroups = %v, want [0x1D 0x11EE]", out2.offeredGroups)
+	}
+}
