@@ -12,13 +12,17 @@ STAGE="$HERE/dist"
 rm -rf "$STAGE"
 mkdir -p "$STAGE/bin" "$STAGE/web"
 
-echo "[1/3] 构建后端（linux amd64 + arm64，CGO_ENABLED=0）..."
+echo "[1/3] 构建后端 + 主机 Agent（linux amd64 + arm64，CGO_ENABLED=0）..."
 cd "$ROOT/backend"
 for arch in amd64 arm64; do
-  echo "      → linux/$arch"
+  echo "      → linux/$arch 后端"
   GOOS=linux GOARCH="$arch" CGO_ENABLED=0 \
     go build -trimpath -ldflags "-s -w" \
     -o "$STAGE/bin/zhulong-pqm-linux-$arch" ./cmd/zhulong-pqm
+  echo "      → linux/$arch 主机 Agent(M-C)"
+  GOOS=linux GOARCH="$arch" CGO_ENABLED=0 \
+    go build -trimpath -ldflags "-s -w" \
+    -o "$STAGE/bin/zhulong-pqm-agent-linux-$arch" ./cmd/agent
 done
 
 echo "[2/3] 构建前端（vite 生产构建）..."
