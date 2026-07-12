@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+
+	"zhulong-pqm/internal/cryptoref"
 )
 
 // M2 被动流量发现：解析上传的抓包（classic .pcap 与 pcapng），按 TCP 流【重组】后
@@ -14,15 +16,17 @@ import (
 
 // TLSObservation M2 观测到的一个服务端 TLS 端点。
 type TLSObservation struct {
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
-	SNI     string `json:"sni"`
-	Version string `json:"version"`
-	Cipher  string `json:"cipher"`
-	Algo    string `json:"algo"`
-	KeySize int    `json:"keySize"`
-	CertFP  string `json:"certFp"`
-	Subject string `json:"subject"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	SNI       string `json:"sni"`
+	Version   string `json:"version"`
+	Cipher    string `json:"cipher"`
+	Algo      string `json:"algo"`
+	KeySize   int    `json:"keySize"`
+	CertFP    string `json:"certFp"`
+	Subject   string `json:"subject"`
+	KexGroup  string `json:"kexGroup"`  // 协商的密钥交换组规范名
+	KexSafety string `json:"kexSafety"` // safe/hybrid/classical
 }
 
 // PcapStats 解析统计（供审计/前端展示）。
@@ -44,7 +48,7 @@ const (
 
 // fkey 定向 TCP 流键（src→dst，方向敏感）。
 type fkey struct {
-	sip, dip   string
+	sip, dip     string
 	sport, dport int
 }
 
@@ -55,6 +59,19 @@ type tcpSeg struct {
 
 type tcpFlow struct {
 	segs []tcpSeg
+}
+
+// applyKexGroup 把观测到的密钥交换组码点（+客户端 key_share 尺寸兜底）分类写入观测。
+// GREASE 或空码点不写。
+func applyKexGroup(o *TLSObservation, codepoint, clientKeyShareMax int) {
+	if codepoint == 0 {
+		return
+	}
+	name, safety := cryptoref.KexSafetyForGroup(codepoint, clientKeyShareMax)
+	if name == "" { // GREASE/噪声
+		return
+	}
+	o.KexGroup, o.KexSafety = name, safety
 }
 
 // ParsePCAP 解析抓包字节流（classic pcap 或 pcapng），返回服务端 TLS 观测与统计。
@@ -109,6 +126,17 @@ func ParsePCAP(data []byte) ([]TLSObservation, PcapStats, error) {
 				if o.Version == "" {
 					o.Version = hs.version
 				}
+				if o.KexGroup == "" && len(hs.offeredGroups) > 0 {
+					for _, g := range hs.offeredGroups {
+						if name, kind, _, known := cryptoref.ClassifyGroup(g); known && kind != "classical" {
+							o.KexGroup, o.KexSafety = name, cryptoref.SafetyFromKind(kind)
+							break
+						}
+					}
+					if o.KexGroup == "" && hs.clientKeyShareMax > 1000 {
+						applyKexGroup(o, hs.offeredGroups[0], hs.clientKeyShareMax)
+					}
+				}
 			case hs.isServerHello:
 				o := get(k.sip, k.sport) // 服务端→客户端：服务端=src
 				o.Cipher = hs.cipher
@@ -116,6 +144,7 @@ func ParsePCAP(data []byte) ([]TLSObservation, PcapStats, error) {
 					o.Algo = hs.keyAlgo
 				}
 				o.Version = hs.version
+				applyKexGroup(o, hs.negotiatedGroup, 0)
 			case hs.certAlgo != "":
 				o := get(k.sip, k.sport)
 				o.Algo = hs.certAlgo // 证书算法权威，覆盖套件推导

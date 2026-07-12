@@ -231,3 +231,17 @@ func TestParseHello_KeyExchangeGroups(t *testing.T) {
 		t.Errorf("ClientHello offeredGroups = %v, want [0x1D 0x11EE]", out2.offeredGroups)
 	}
 }
+
+func TestObservationFromNegotiatedGroup(t *testing.T) {
+	o := &TLSObservation{}
+	applyKexGroup(o, 0x11EE, 0) // 服务端选中 curveSM2MLKEM768
+	if o.KexGroup != "curveSM2MLKEM768" || o.KexSafety != "hybrid" {
+		t.Errorf("got (%q,%q), want (curveSM2MLKEM768,hybrid)", o.KexGroup, o.KexSafety)
+	}
+	// GREASE 不应写入
+	o2 := &TLSObservation{}
+	applyKexGroup(o2, 0x1A1A, 0)
+	if o2.KexGroup != "" || o2.KexSafety != "" {
+		t.Errorf("GREASE wrote (%q,%q), want empty", o2.KexGroup, o2.KexSafety)
+	}
+}
