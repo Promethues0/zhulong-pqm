@@ -40,6 +40,8 @@ func Open(path string) (*gorm.DB, error) {
 		&model.Report{},
 		&model.Device{},
 		&model.RemediationTask{},
+		// M-B 主机 Agent / 探针身份
+		&model.Agent{},
 		&model.ScoreProfile{},
 		&model.ScoreHistory{},
 		&model.RescoreRun{},

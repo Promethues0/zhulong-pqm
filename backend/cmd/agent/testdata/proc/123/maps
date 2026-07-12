@@ -1,0 +1,7 @@
+55a1b2c00000-55a1b2c21000 r--p 00000000 08:01 1234567                    /usr/sbin/nginx
+55a1b2c21000-55a1b2c45000 r-xp 00021000 08:01 1234567                    /usr/sbin/nginx
+7f2a3c000000-7f2a3c021000 r--p 00000000 08:01 2222222                    /usr/lib/x86_64-linux-gnu/libssl.so.3
+7f2a3c021000-7f2a3c1a0000 r-xp 00021000 08:01 2222222                    /usr/lib/x86_64-linux-gnu/libssl.so.3
+7f2a3d000000-7f2a3d030000 r--p 00000000 08:01 2222223                    /usr/lib/x86_64-linux-gnu/libcrypto.so.3
+7f2a3e000000-7f2a3e010000 rw-p 00000000 00:00 0
+7f2a3f000000-7f2a3f008000 r--p 00000000 08:01 3333333                    /usr/lib/x86_64-linux-gnu/libc.so.6

@@ -55,6 +55,11 @@ func (s *Server) Router() *gin.Engine {
 	v1 := r.Group("/api/v1")
 	v1.POST("/auth/login", s.login)
 
+	// Agent 受限上报组（X-Agent-Key 鉴权，不走用户 JWT）。主机 Agent/探针专用。
+	agentGrp := v1.Group("/agent")
+	agentGrp.Use(s.agentAuth())
+	agentGrp.POST("/assets/batch", s.agentAssetsBatch)
+
 	// auth：所有已登录用户可访问（读端点留此）。
 	auth := v1.Group("")
 	auth.Use(s.authMiddleware())
@@ -192,6 +197,11 @@ func (s *Server) Router() *gin.Engine {
 		writer.PUT("/devices/:id", s.updateDevice)
 		writer.DELETE("/devices/:id", s.deleteDevice)
 		writer.POST("/devices/:id/test", s.testDevice)
+
+		// 主机 Agent / 探针身份管理（M-B）：注册限 admin，列表任意已登录，撤销限 admin。
+		auth.GET("/agents", s.listAgents)
+		adminGrp.POST("/agents", s.createAgent)
+		adminGrp.POST("/agents/:id/revoke", s.revokeAgent)
 
 		writer.POST("/remediations", s.createRemediation)
 		writer.POST("/remediations/:id/execute", s.executeRemediation)

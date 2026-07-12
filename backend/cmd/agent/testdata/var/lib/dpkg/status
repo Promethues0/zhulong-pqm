@@ -1,0 +1,40 @@
+Package: libssl3
+Status: install ok installed
+Priority: optional
+Section: libs
+Installed-Size: 1500
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Architecture: amd64
+Multi-Arch: same
+Source: openssl
+Version: 3.0.2-0ubuntu1.18
+Depends: libc6 (>= 2.34)
+Description: Secure Sockets Layer toolkit - shared libraries
+ This package is part of the OpenSSL project's implementation of the SSL
+ and TLS cryptographic protocols for secure communication over the
+ Internet.
+
+Package: nginx
+Status: install ok installed
+Priority: optional
+Section: httpd
+Installed-Size: 200
+Maintainer: nginx maintainers <team@nginx.org>
+Architecture: amd64
+Version: 1.24.0-2ubuntu7
+Depends: libc6 (>= 2.34)
+Description: small, powerful, scalable web/proxy server
+ Nginx ("engine X") is a high-performance web and reverse proxy server.
+
+Package: libgnutls30
+Status: install ok installed
+Priority: optional
+Section: libs
+Installed-Size: 900
+Maintainer: Debian GNUTLS Maintainers <pkg-gnutls-maint@lists.alioth.debian.org>
+Architecture: amd64
+Version: 3.7.9-2ubuntu1.4
+Depends: libc6 (>= 2.34)
+Description: GNU TLS library - main runtime library
+ GnuTLS is a portable library which implements the SSL, TLS and DTLS
+ protocols.
