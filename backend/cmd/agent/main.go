@@ -25,7 +25,10 @@ func main() {
 
 	runOnce := func() error {
 		if cfg.Role == model.AgentKindProbe {
-			return runProbe(cfg) // 探针模式：抓包→边缘解析→上报
+			if cfg.Managed {
+				return runManagedProbe(cfg) // managed：轮询领控制台下发的任务（常驻，不返回）
+			}
+			return runProbe(cfg) // M-D1 配置驱动一次性抓
 		}
 		assets := gatherAssets(cfg)
 		fmt.Printf("发现完成：共 %d 条密码学使用点\n", len(assets))
