@@ -123,6 +123,7 @@ func (s *Server) agentAuth() gin.HandlerFunc {
 		s.db.Model(&model.Agent{}).Where("id = ?", ag.ID).Update("last_seen_at", &now)
 		c.Set("reportedBy", ag.AgentID)
 		c.Set("agentKind", ag.Kind)
+		c.Set("agentLabels", db.UnmarshalStrings(ag.LabelsJSON)) // M-D2 任务标签匹配用
 		c.Next()
 	}
 }

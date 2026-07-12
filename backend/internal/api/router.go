@@ -59,6 +59,9 @@ func (s *Server) Router() *gin.Engine {
 	agentGrp := v1.Group("/agent")
 	agentGrp.Use(s.agentAuth())
 	agentGrp.POST("/assets/batch", s.agentAssetsBatch)
+	agentGrp.GET("/tasks", s.agentLeaseTask)                    // M-D2 探针领抓包任务
+	agentGrp.POST("/tasks/:id/heartbeat", s.agentHeartbeat)     // 续租
+	agentGrp.POST("/tasks/:id/complete", s.agentCompleteTask)   // 报完成
 
 	// auth：所有已登录用户可访问（读端点留此）。
 	auth := v1.Group("")
@@ -202,6 +205,13 @@ func (s *Server) Router() *gin.Engine {
 		auth.GET("/agents", s.listAgents)
 		adminGrp.POST("/agents", s.createAgent)
 		adminGrp.POST("/agents/:id/revoke", s.revokeAgent)
+
+		// M-D2 抓包任务管理：列表/详情任意已登录，建/取消/删限 operator/admin。
+		auth.GET("/captures", s.listCaptures)
+		auth.GET("/captures/:id", s.getCapture)
+		writer.POST("/captures", s.createCapture)
+		writer.POST("/captures/:id/cancel", s.cancelCapture)
+		writer.DELETE("/captures/:id", s.deleteCapture)
 
 		writer.POST("/remediations", s.createRemediation)
 		writer.POST("/remediations/:id/execute", s.executeRemediation)

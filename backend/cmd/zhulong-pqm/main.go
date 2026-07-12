@@ -28,6 +28,7 @@ func main() {
 	monitor.RegisterPolicies(srv.Scheduler(), database)
 	// ⑥ 仪表板趋势：daily 快照任务注册到同一 ticker（C1，启动即采一次）。
 	api.RegisterDailySnapshot(srv.Scheduler(), database)
+	api.RegisterCaptureScheduler(srv.Scheduler(), database) // M-D2 抓包任务调度(回收过期租约+周期重入队)
 	srv.Scheduler().Start(context.Background())
 
 	r := srv.Router()
