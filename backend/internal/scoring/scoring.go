@@ -7,6 +7,8 @@ package scoring
 import (
 	"math"
 	"strings"
+
+	"zhulong-pqm/internal/cryptoref"
 )
 
 // 维度权重。五维加权和满分 100。
@@ -289,6 +291,14 @@ func deriveD1Classic(in DeriveInput) int {
 		strings.Contains(tls, "TLS1.0") || strings.Contains(tls, "TLS1.1") {
 		return 100
 	}
+	// PQC 签名算法名先行分类：'ML-DSA'/'SLH-DSA' 含裸 'DSA' 子串，
+	// 落到下面经典启发式会误判 90，须在此按 cryptoref 认证维口径短路。
+	switch cryptoref.AuthSafetyForAlgo(algo) {
+	case cryptoref.SafetySafe:
+		return 10
+	case cryptoref.SafetyHybrid:
+		return 15
+	}
 	switch {
 	case strings.Contains(algo, "RSA"):
 		return 90
@@ -343,6 +353,14 @@ func deriveD5(exposure string) int {
 // SuggestAlgo 依据算法类别给出后量子迁移目标建议。
 func SuggestAlgo(algorithm string) string {
 	algo := strings.ToUpper(algorithm)
+	// 已是 PQC 或经典+PQC 混合（DP-04 过渡目标）→ 已迁移，不再开迁移处方；
+	// 否则 'ML-DSA' 撞裸 'DSA'、'ML-KEM' 撞 'KEM' 会给已迁移资产误开建议。
+	if s := cryptoref.AuthSafetyForAlgo(algo); s == cryptoref.SafetySafe || s == cryptoref.SafetyHybrid {
+		return ""
+	}
+	if _, ok := cryptoref.LookupAlgo(algo); ok { // KEM 名不在认证维 token 表，走 PQC 算法表兜住
+		return ""
+	}
 	switch {
 	case strings.Contains(algo, "SM2"), strings.Contains(algo, "SM"):
 		return "SM2+ML-KEM/SM2+ML-DSA"

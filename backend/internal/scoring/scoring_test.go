@@ -244,3 +244,40 @@ func TestDeriveD1_PQCBranch(t *testing.T) {
 		}
 	}
 }
+
+// TestDeriveD1_PQCAlgoNameNotMisjudged 校验 PQC 签名算法名不被经典子串启发式误判：
+// 'ML-DSA'/'SLH-DSA' 含裸 'DSA' 子串，旧逻辑会命中经典离散对数分支误判 90。
+func TestDeriveD1_PQCAlgoNameNotMisjudged(t *testing.T) {
+	cases := []struct {
+		name string
+		in   DeriveInput
+		want int
+	}{
+		{"纯ML-DSA签名→safe基线", DeriveInput{Algorithm: "ML-DSA-65"}, 10},
+		{"SLH-DSA不撞裸DSA", DeriveInput{Algorithm: "SLH-DSA"}, 10},
+		{"PQC签名+经典KEX→经典KEX主导70而非90", DeriveInput{Algorithm: "ML-DSA-65", KexSafety: "classical"}, 70},
+		{"经典+PQC组合签名→hybrid基线", DeriveInput{Algorithm: "SM2+ML-DSA-65"}, 15},
+		{"经典ECDSA维持70", DeriveInput{Algorithm: "ECDSA"}, 70},
+		{"经典裸DSA维持90", DeriveInput{Algorithm: "DSA"}, 90},
+	}
+	for _, c := range cases {
+		if got := deriveD1(c.in); got != c.want {
+			t.Errorf("%s: deriveD1(%+v) = %d, want %d", c.name, c.in, got, c.want)
+		}
+	}
+}
+
+// TestSuggestAlgo_PQCAlreadyMigrated 校验已迁移算法不再给迁移建议：
+// 'ML-DSA' 撞裸 'DSA'、'ML-KEM' 撞 'KEM' 的旧逻辑会给纯 PQC 资产开迁移处方。
+func TestSuggestAlgo_PQCAlreadyMigrated(t *testing.T) {
+	for _, algo := range []string{"ML-DSA-65", "SLH-DSA", "ML-KEM-768", "SM2+ML-DSA-65", "X25519+ML-KEM-768(过渡)"} {
+		if got := SuggestAlgo(algo); got != "" {
+			t.Errorf("SuggestAlgo(%q) = %q, 已迁移算法应无建议", algo, got)
+		}
+	}
+	for _, algo := range []string{"RSA", "SM2", "ECDSA", "DSA"} {
+		if got := SuggestAlgo(algo); got == "" {
+			t.Errorf("SuggestAlgo(%q) 经典算法应有迁移建议", algo)
+		}
+	}
+}
