@@ -45,3 +45,25 @@ func hasProp(c Component, name, val string) bool {
 	}
 	return false
 }
+
+// TestComponentToAsset_RestoresKexAuthDims 校验 CBOM 反向导入无损回填双维量子安全态。
+// KexSafety 丢失会让导入后任意重算路径（recompute 走 EffectiveHNDL）复活已缓解的 HNDL。
+func TestComponentToAsset_RestoresKexAuthDims(t *testing.T) {
+	a := model.CryptoAsset{
+		Name: "gw-1443", Algorithm: "ML-DSA-65", Protocol: "TLS1.3",
+		KexGroup: "curveSM2MLKEM768", KexSafety: "hybrid", AuthSafety: "safe",
+	}
+	got, ok := ComponentToAsset(assetToComponent(a))
+	if !ok {
+		t.Fatal("cryptographic-asset 组件应可反归一")
+	}
+	if got.KexGroup != a.KexGroup {
+		t.Errorf("KexGroup = %q, want %q", got.KexGroup, a.KexGroup)
+	}
+	if got.KexSafety != a.KexSafety {
+		t.Errorf("KexSafety = %q, want %q（丢失将致 rescore 复活 HNDL）", got.KexSafety, a.KexSafety)
+	}
+	if got.AuthSafety != a.AuthSafety {
+		t.Errorf("AuthSafety = %q, want %q", got.AuthSafety, a.AuthSafety)
+	}
+}

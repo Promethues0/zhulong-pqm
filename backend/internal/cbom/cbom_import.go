@@ -95,6 +95,12 @@ func ComponentToAsset(c Component) (model.CryptoAsset, bool) {
 			a.D4 = atoi(p.Value)
 		case "zhulong:d5":
 			a.D5 = atoi(p.Value)
+		case "zhulong:kexGroup":
+			a.KexGroup = p.Value
+		case "zhulong:kexSafety":
+			a.KexSafety = p.Value
+		case "zhulong:authSafety":
+			a.AuthSafety = p.Value
 		}
 	}
 
