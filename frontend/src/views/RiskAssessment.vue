@@ -9,7 +9,7 @@ import type {
   ScorePreset,
   ScoreSummary,
 } from '@/api/types'
-import { levelColor, levelText, scoreLevel, scoreColor } from '@/utils/format'
+import { levelColor, levelText, scoreLevel, scoreColor, kexTagColor } from '@/utils/format'
 
 const WEIGHTS = { d1: 0.3, d2: 0.25, d3: 0.2, d4: 0.15, d5: 0.1 } as const
 
@@ -63,11 +63,6 @@ const summaryCards = computed(() => {
 
 function optionsFor(key: DimKey) {
   return options.value?.[key] ?? []
-}
-
-// 密钥交换 / 认证维安全态 → Arco 标签颜色（safe=green/hybrid=arcoblue/classical=orange/其他=gray）。
-function kexTagColor(s?: string): string {
-  return s === 'safe' ? 'green' : s === 'hybrid' ? 'arcoblue' : s === 'classical' ? 'orange' : 'gray'
 }
 
 function safetyText(s?: string): string {

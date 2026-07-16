@@ -163,8 +163,10 @@ const migrationDist = computed(() => {
   const all = assets.value || []
   const safe = all.filter((a) => a.kexSafety === 'safe').length
   const hybrid = all.filter((a) => a.kexSafety === 'hybrid').length
-  const classical = all.length - safe - hybrid
-  return { safe, hybrid, classical, total: all.length }
+  const classical = all.filter((a) => a.kexSafety === 'classical').length
+  // na/空 = 该维不适用或未判定（TLS1.2 无 KEX 观测、磁盘证书等），不得算进「待迁移」虚增经典占比
+  const na = all.length - safe - hybrid - classical
+  return { safe, hybrid, classical, na, total: all.length }
 })
 
 // ---- 五阶段闭环 ----
@@ -530,6 +532,10 @@ function fmtInt(v: number) {
               <div class="cmp-cell">
                 <div class="cmp-v" style="color: #3fd08a">{{ migrationDist.safe }}</div>
                 <div class="cmp-l">全迁移（PQC）</div>
+              </div>
+              <div class="cmp-cell">
+                <div class="cmp-v" style="color: #8fb0d6">{{ migrationDist.na }}</div>
+                <div class="cmp-l">未判定/不适用</div>
               </div>
             </div>
           </div>

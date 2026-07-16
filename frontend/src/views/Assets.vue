@@ -32,6 +32,7 @@ import {
   fmtDay,
   fmtDate,
   certUrgency,
+  kexTagColor,
 } from '@/utils/format'
 import AssetFormDrawer from '@/components/AssetFormDrawer.vue'
 import MergeModal from '@/components/MergeModal.vue'
@@ -301,11 +302,6 @@ async function exportCbom() {
   } finally {
     exporting.value = false
   }
-}
-
-// 密钥交换安全态 → Arco 标签颜色（safe=green/hybrid=arcoblue/classical=orange/其他=gray）。
-function kexTagColor(s?: string): string {
-  return s === 'safe' ? 'green' : s === 'hybrid' ? 'arcoblue' : s === 'classical' ? 'orange' : 'gray'
 }
 
 function certColor(notAfter?: string | null): string {

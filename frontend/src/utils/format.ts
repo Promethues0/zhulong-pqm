@@ -584,3 +584,8 @@ export function legacyStatusMeta(status: string): { label: string; color: string
       return { label: status || '—', color: 'gray' }
   }
 }
+
+/** 密钥交换/认证维量子安全态 → Arco 标签颜色（safe=green/hybrid=arcoblue/classical=orange/其他=gray）。 */
+export function kexTagColor(s?: string): string {
+  return s === 'safe' ? 'green' : s === 'hybrid' ? 'arcoblue' : s === 'classical' ? 'orange' : 'gray'
+}
