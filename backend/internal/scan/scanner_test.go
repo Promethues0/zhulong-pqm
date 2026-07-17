@@ -1,6 +1,24 @@
 package scan
 
-import "testing"
+import (
+	"testing"
+
+	"zhulong-pqm/internal/model"
+)
+
+func TestNewScanner_TLSPQC(t *testing.T) {
+	sc := NewScanner(model.ScannerTLSPQC)
+	if sc.Name() != "tls-pqc" {
+		t.Errorf("NewScanner(tls-pqc).Name() = %q, want tls-pqc", sc.Name())
+	}
+	if _, ok := sc.(*TLSPQCScanner); !ok {
+		t.Errorf("NewScanner(tls-pqc) 类型 = %T, want *TLSPQCScanner", sc)
+	}
+	// 默认 tls 仍是 TLSScanner（无回归）
+	if _, ok := NewScanner(model.ScannerTLS).(*TLSScanner); !ok {
+		t.Error("NewScanner(tls) 应仍返回 *TLSScanner")
+	}
+}
 
 // TestParseTargets_CIDRExpand 验证 CIDR 网段展开（去网络/广播号、上限保护）与单目标解析。
 func TestParseTargets_CIDRExpand(t *testing.T) {

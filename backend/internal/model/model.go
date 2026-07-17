@@ -91,10 +91,11 @@ const (
 
 // 扫描器类型（active 扫描时按此选具体扫描器）。
 const (
-	ScannerTLS = "tls"
-	ScannerSSH = "ssh"
-	ScannerIKE = "ike" // 占位（元数据可见，未实现）
-	ScannerRDP = "rdp" // 占位（元数据可见，未实现）
+	ScannerTLS    = "tls"
+	ScannerTLSPQC = "tls-pqc" // 主动 TLS 握手 + PQC 组枚举（opt-in 深挖）
+	ScannerSSH    = "ssh"
+	ScannerIKE    = "ike" // 占位（元数据可见，未实现）
+	ScannerRDP    = "rdp" // 占位（元数据可见，未实现）
 )
 
 // 扫描模式（FR-3.5.5）。
