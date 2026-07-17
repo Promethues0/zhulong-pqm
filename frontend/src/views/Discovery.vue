@@ -163,6 +163,7 @@ const form = reactive({
   name: '',
   targetsText: '',
   exposure: 'internal' as 'internal' | 'dmz' | 'public',
+  scannerType: 'tls',
 })
 
 // 结果抽屉
@@ -267,10 +268,12 @@ async function submit() {
       name: form.name.trim(),
       targets,
       exposure: form.exposure,
+      scannerType: form.scannerType,
     })
     Message.success('扫描任务已创建，正在 Agentless 探测…')
     form.name = ''
     form.targetsText = ''
+    form.scannerType = 'tls'
     await loadJobs()
   } catch {
     Message.error('创建扫描任务失败')
@@ -369,6 +372,15 @@ onBeforeUnmount(() => {
                 <a-option value="dmz">DMZ</a-option>
                 <a-option value="public">公网 public</a-option>
               </a-select>
+            </a-form-item>
+            <a-form-item label="扫描器">
+              <a-select v-model="form.scannerType">
+                <a-option value="tls">TLS 快扫（证书 + 套件）</a-option>
+                <a-option value="tls-pqc">TLS + PQC 深挖（枚举后量子组，较慢）</a-option>
+              </a-select>
+              <div class="field-hint">
+                tls-pqc 会对每个目标逐组主动枚举后量子/混合密钥交换组，连接开销更大。
+              </div>
             </a-form-item>
             <a-button type="primary" long :loading="submitting" @click="submit">
               <template #icon><IconScan /></template>
