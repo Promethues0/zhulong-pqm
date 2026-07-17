@@ -116,3 +116,40 @@ func TestSafetyForGroupName(t *testing.T) {
 		t.Errorf("UNKNOWN- prefix(大写) = %q, want hybrid(保守)", s)
 	}
 }
+
+func TestPQCGroupCodepoints(t *testing.T) {
+	got := PQCGroupCodepoints()
+
+	// 必须精确等于这份白名单（顺序敏感：主流/国密靠前决定选主组优先序）
+	want := []int{
+		0x11EC, // X25519MLKEM768（互联网主流 Rec=Y）
+		0x11EE, // curveSM2MLKEM768（国密 铜锁 Tongsuo 8.5+）
+		0x11EB, // SecP256r1MLKEM768
+		0x11ED, // SecP384r1MLKEM1024
+		0x6399, // X25519Kyber768Draft00
+		0x0200, // MLKEM512
+		0x0201, // MLKEM768
+		0x0202, // MLKEM1024
+	}
+	if len(got) != len(want) {
+		t.Fatalf("PQCGroupCodepoints len = %d, want %d: %#x", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("PQCGroupCodepoints[%d] = 0x%04X, want 0x%04X", i, got[i], want[i])
+		}
+	}
+
+	// 反向不变量：不得含仅作时间指纹的 0xFEFE、任一 GREASE、任一经典组
+	for _, cp := range got {
+		if cp == 0xFEFE {
+			t.Error("白名单不得含 0xFEFE(draft-02 时间指纹，非真实可协商)")
+		}
+		if IsGREASEGroup(cp) {
+			t.Errorf("白名单不得含 GREASE 组 0x%04X", cp)
+		}
+		if _, kind, _, known := ClassifyGroup(cp); !known || (kind != "pqc" && kind != "hybrid") {
+			t.Errorf("0x%04X kind=%q known=%v，白名单只应含真实 pqc/hybrid 组", cp, kind, known)
+		}
+	}
+}

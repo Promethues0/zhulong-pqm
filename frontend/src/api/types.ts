@@ -127,6 +127,7 @@ export interface ScanInput {
   name: string
   targets: string[]
   exposure: string
+  scannerType?: string
 }
 
 /** 单个目标的探测结果 */

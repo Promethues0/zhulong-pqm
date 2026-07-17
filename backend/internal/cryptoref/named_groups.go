@@ -118,3 +118,19 @@ func KexSafetyForGroup(codepoint int, clientKeyShareLen int) (groupName string, 
 	}
 	return fmt.Sprintf("unknown-0x%04X", codepoint), SafetyClassical
 }
+
+// PQCGroupCodepoints 返回可主动枚举的 PQC/混合密钥交换组码点白名单。
+// 显式 curated（非按 kind 自动推导）：排除仅作时间指纹的 0xFEFE(draft-02)。
+// 顺序即枚举顺序，也即命中多组时的选主组优先序——互联网主流与国密排在前。
+func PQCGroupCodepoints() []int {
+	return []int{
+		0x11EC, // X25519MLKEM768（互联网主流，唯一 Rec=Y）
+		0x11EE, // curveSM2MLKEM768（国密 SM2+ML-KEM，铜锁 Tongsuo 8.5+）
+		0x11EB, // SecP256r1MLKEM768
+		0x11ED, // SecP384r1MLKEM1024
+		0x6399, // X25519Kyber768Draft00
+		0x0200, // MLKEM512
+		0x0201, // MLKEM768
+		0x0202, // MLKEM1024
+	}
+}

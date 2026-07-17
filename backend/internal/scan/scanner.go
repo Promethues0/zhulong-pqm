@@ -32,6 +32,8 @@ type HitMatcher interface {
 // NewScanner 按 scannerType 装配具体扫描器（默认 tls）。占位扫描器返回未实现标注。
 func NewScanner(scannerType string) Scanner {
 	switch scannerType {
+	case model.ScannerTLSPQC:
+		return NewTLSPQCScanner()
 	case model.ScannerSSH:
 		return NewSSHScanner()
 	case model.ScannerIKE:
